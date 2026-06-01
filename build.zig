@@ -7,7 +7,7 @@ const targets: []const std.Target.Query = &.{
 pub fn build(b: *std.Build) !void {
   const target = b.standardTargetOptions(.{});
 
-  const token_c = b.addTranslateC(.{
+  const tona_c = b.addTranslateC(.{
     .root_source_file = b.path("src/tona.h"),
     .target = target,
     .optimize = .Debug,
@@ -19,27 +19,28 @@ pub fn build(b: *std.Build) !void {
       .root_source_file = b.path("tona/tona.zig"),
       .target = target,
       .optimize = .Debug,
-      .imports = &.{
-        .{
-          .name = "tona_h",
-          .module = token_c.createModule()
-        }
-      },
       .link_libc = true
     }),
   });
 
   const tona_module = b.createModule(.{
     .root_source_file = b.path("src/root.zig"),
-    .target = target
+    .target = target,
+    .imports = &.{
+      .{
+        .name = "tona_c",
+        .module = tona_c.createModule()
+      }
+    },
   });
 
-  tona_exe.root_module.addObjectFile(b.path("build/libtona.a"));
-  tona_exe.root_module.addImport("tona", tona_module);
-  tona_exe.root_module.addObjectFile(.{
+  tona_module.addObjectFile(b.path("build/libtona.a"));
+  tona_module.addObjectFile(.{
     .cwd_relative = "/usr/lib/libstdc++.a"
   });
-  tona_exe.root_module.linkSystemLibrary("gcc_s", .{});
+  tona_module.linkSystemLibrary("gcc_s", .{});
+
+  tona_exe.root_module.addImport("tona", tona_module);
 
   b.installArtifact(tona_exe);
 

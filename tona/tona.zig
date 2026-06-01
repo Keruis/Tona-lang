@@ -2,7 +2,13 @@ const std = @import("std");
 const tona = @import("tona");
 
 pub fn main(init: std.process.Init) void {
-  tona.lexer.test1();
+  
+  const lexer = tona.Lexer.init();
+  defer lexer.deinit();
+
+  const ctx = lexer.scan_tokens();
+  defer ctx.deinit();
+
   if (init.minimal.args.vector.len < 2)
     std.debug.print("Args < 2\n", .{});
 

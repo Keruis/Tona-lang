@@ -18,4 +18,5 @@ target_sources(tona
   FILE_SET CXX_MODULES FILES
   elysia.ixx
   lexer/lexer.ixx
+  lexer/token.ixx
 )
