@@ -4,34 +4,40 @@ module;
 
 export module tona.elysia;
 
+import tona.types;
 import tona.lexer;
 import tona.token;
 
+import std;
+
 export extern "C" {
-  
-// lexer
-  Lexer* create_lexer() {
-    auto* lex = new Tona::Lexer();
-    return reinterpret_cast<Lexer*>(lex);
+  Tona::Lexer* create_lexer() {
+    return new Tona::Lexer();
   }
 
-  void destroy_lexer(Lexer* lex) {
-    delete reinterpret_cast<Tona::Lexer*>(lex);
+  void destroy_lexer(Tona::Lexer* lex) {
+    delete lex;
   }
 
-  void destroy_token_ctx(TokenContext* ctx) {
-    delete reinterpret_cast<Tona::TokenContext*>(ctx);
+  void destroy_token_ctx(Tona::TokenContext* ctx) {
+    delete ctx;
   }
 
-  TokenContext* tokens(Lexer* lex) {
-    auto* cpp_lex = reinterpret_cast<Tona::Lexer*>(lex);
-    auto* ctx = new Tona::TokenContext(cpp_lex->tokens());
-    return reinterpret_cast<TokenContext*>(ctx);
+  Tona::TokenContext* tokens(
+    Tona::Lexer* lex, Tona::tccp path_ptr, std::size_t path_len, 
+    Tona::tccp text_ptr, std::size_t text_len, TokenError* err
+  ) {
+    if (auto res = lex->tokens(
+      std::string_view(path_ptr, path_len), 
+      std::string_view(text_ptr, text_len)); 
+      res.has_value()
+    ) return new Tona::TokenContext(std::move(*res));
+    else {
+      if (err) *err = res.error();
+    } return nullptr;
   }
-
-// parser
-
-
-// sema
 
 }
+
+
+

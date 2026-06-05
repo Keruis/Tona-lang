@@ -17,6 +17,12 @@ target_sources(tona
   PUBLIC
   FILE_SET CXX_MODULES FILES
   elysia.ixx
+  types.ixx
   lexer/lexer.ixx
   lexer/token.ixx
+)
+
+target_compile_options(tona PRIVATE
+  -save-temps=obj
+  -fverbose-asm
 )

@@ -2,6 +2,8 @@ export module tona.token;
 
 import std;
 
+import tona.types;
+
 export namespace Tona {
 
   enum class TokenType : std::uint8_t {
@@ -110,7 +112,6 @@ export namespace Tona {
     kw(TokenType::T_KEYWORD_TRUE);
     kw(TokenType::T_KEYWORD_FALSE);
 
-
     table[static_cast<std::size_t>(TokenType::T_LITERALS_INT)]    = {TokenClass::C_LITERAL, 0};
     table[static_cast<std::size_t>(TokenType::T_LITERALS_FLOAT)]  = {TokenClass::C_LITERAL, 0};
     table[static_cast<std::size_t>(TokenType::T_LITERALS_INT_SUF)]    = {TokenClass::C_LITERAL, 0};
@@ -132,14 +133,14 @@ export namespace Tona {
   };
 
   const std::flat_map<std::string_view, TokenType> keywords {
-    {"var", TokenType::T_KEYWORD_VAR}, //1
-    {"const", TokenType::T_KEYWORD_CONST},//1
-    {"if", TokenType::T_KEYWORD_IF}, //1
-    {"else", TokenType::T_KEYWORD_ELSE}, //1
+    {"var", TokenType::T_KEYWORD_VAR},
+    {"const", TokenType::T_KEYWORD_CONST},
+    {"if", TokenType::T_KEYWORD_IF},
+    {"else", TokenType::T_KEYWORD_ELSE},
     {"fn", TokenType::T_KEYWORD_FUN},
-    {"for", TokenType::T_KEYWORD_FOR}, //2
-    {"true", TokenType::T_KEYWORD_TRUE}, //1
-    {"false", TokenType::T_KEYWORD_FALSE} //2
+    {"for", TokenType::T_KEYWORD_FOR},
+    {"true", TokenType::T_KEYWORD_TRUE},
+    {"false", TokenType::T_KEYWORD_FALSE}
   };
 
   TokenType find_keyword(std::string_view text) {
@@ -150,25 +151,14 @@ export namespace Tona {
     return TokenType::T_IDENTIFIER;
   }
 
-  struct TokenContext;
-
   struct alignas(8) Token {
     union {
       std::string_view text;
       std::uint64_t str_idx;
-    }; // 16
-    struct Location {
-      std::uint32_t line;
-      std::uint32_t col;
-    } loc; // 8
+    };
+    tccp start_ptr;
     TokenType type;
-    
-    Token(std::string_view t, Location l, TokenType ty)
-      : text(t), loc(l), type(ty) {}
-
-    Token(std::uint64_t idx, Location l, TokenType ty)
-      : str_idx(idx), loc(l), type(ty) {}
-  }; // 32
+  };
 
   struct TokenContext {
     std::deque<std::string> macro_buffers; // 80
