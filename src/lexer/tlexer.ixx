@@ -1,24 +1,21 @@
-module;
-
-#include "../tona.h"
-
 export module tona.lexer;
+
+import std;
 
 import tona.types;
 import tona.token;
-
-import std;
+import tona.buf;
 
 #define PARSE_DOUBLE_CHAR(last_char, double_type, one_type) \
   if (*++cur == last_char) {         \
     cur++;                           \
     vec_toks.push_back(Token{        \
-      .start_ptr = cur - 2,          \
+      .start = cur - 2,              \
       .type = TokenType::double_type \
     });                              \
   } else {                           \
     vec_toks.push_back(Token{        \
-      .start_ptr = cur - 1,          \
+      .start = cur - 1,              \
       .type = TokenType::one_type    \
     });                              \
   }
@@ -27,16 +24,15 @@ export namespace Tona {
 
   class Lexer {
     public:
-      [[nodiscard]] std::expected<TokenContext, TokenError> tokens(std::string_view path, std::string_view text) noexcept {
+      [[nodiscard]] TokenContext tokenize(std::string_view text) noexcept {
         TokenContext ctx;
-        ctx.path = path;
 
-        tccp cur = text.data();
+        const char* cur = text.data();
 
         auto& vec_toks = ctx.tokens;
         vec_toks.reserve(text.size() / 5);
 
-        tccp start_ptr = nullptr;
+        const char* start_ptr = nullptr;
         TokenType num_type = TokenType::_;
 
         constexpr void* labels[256] = {
@@ -53,18 +49,18 @@ export namespace Tona {
           goto *labels[static_cast<std::uint8_t>(*cur)];
           
         l_identifier: {
-          tccp end_ptr = identifier_char(cur);
+          const char* end_ptr = identifier_char(cur);
           std::string_view identifier(cur, end_ptr);
           if (
             auto res = find_keyword(identifier); 
             res == TokenType::T_IDENTIFIER
           ) vec_toks.push_back(Token{
               .text = identifier,
-              .start_ptr = cur,
+              .start = cur,
               .type = res
             });
           else vec_toks.push_back(Token{
-            .start_ptr = cur,
+            .start = cur,
             .type = TokenType::T_IDENTIFIER
           });
 
@@ -74,7 +70,7 @@ export namespace Tona {
         l_op_chars:
         l_punc_chars:
           vec_toks.push_back(Token{
-            .start_ptr = cur,
+            .start = cur,
             .type = static_cast<TokenType>(*cur)
           });
           goto *labels[static_cast<std::uint8_t>(*++cur)];
@@ -82,27 +78,28 @@ export namespace Tona {
         l_digit_0:
           start_ptr = cur++;
           switch (*cur) {
-            case 'b':
-            case 'B': cur++; goto pn_bin_prefix;
-            case 'o':
-            case 'O': cur++; goto pn_oct_prefix;
-            case 'x':
-            case 'X': cur++; goto pn_hex_prefix;
-            case '.': cur++; goto pn_franction_direct;
-            case 'e':
-            case 'E': cur++; goto pn_exponect_direct;
-            case 'u':
-            case 'U':
-            case 'i':
-            case 'I': cur++; num_type = TokenType::T_LITERALS_INT; goto pn_suf_num;
-            case 'f':
-            case 'F': cur++; num_type = TokenType::T_LITERALS_FLOAT; goto pn_suf_num;
+            case 'b' :
+            case 'B' : cur++; goto pn_bin_prefix;
+            case 'o' :
+            case 'O' : cur++; goto pn_oct_prefix;
+            case 'x' :
+            case 'X' : cur++; goto pn_hex_prefix;
+            case '.' : cur++; goto pn_franction_direct;
+            case 'e' :
+            case 'E' : cur++; goto pn_exponect_direct;
+            case 'u' :
+            case 'U' :
+            case 'i' :
+            case 'I' : cur++; num_type = TokenType::T_LITERALS_INT; goto pn_suf_num;
+            case 'f' :
+            case 'F' : cur++; num_type = TokenType::T_LITERALS_FLOAT; goto pn_suf_num;
+            case '\'': goto ERR_INVALID_NUMERIC_LITERAL;
             default:
               if (is_dec_char(*cur)) [[unlikely]]
                 goto ERR_INVALID_NUMERIC_LITERAL;
               vec_toks.push_back(Token{
                 .text = std::string_view(start_ptr, 1),
-                .start_ptr = start_ptr,
+                .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT
               });
           }
@@ -115,21 +112,22 @@ export namespace Tona {
             is_dec_char
           >(cur);
           switch (*cur) {
-            case '.': cur++; goto pn_franction_direct;
-            case 'e':
-            case 'E': cur++; goto pn_exponect_direct;
-            case 'u':
-            case 'U':
-            case 'i':
-            case 'I': cur++; num_type = TokenType::T_LITERALS_INT; goto pn_suf_num;
-            case 'f':
-            case 'F': cur++; num_type = TokenType::T_LITERALS_FLOAT; goto pn_suf_num;
+            case '.' : cur++; goto pn_franction_direct;
+            case 'e' :
+            case 'E' : cur++; goto pn_exponect_direct;
+            case 'u' :
+            case 'U' :
+            case 'i' :
+            case 'I' : cur++; num_type = TokenType::T_LITERALS_INT; goto pn_suf_num;
+            case 'f' :
+            case 'F' : cur++; num_type = TokenType::T_LITERALS_FLOAT; goto pn_suf_num;
+            case '\'': goto ERR_INVALID_NUMERIC_LITERAL;
             default:
               if (is_identifier_char(*cur))
                 goto ERR_INVALID_NUMERIC_LITERAL;
               vec_toks.push_back(Token{
                 .text = std::string_view(start_ptr, cur),
-                .start_ptr = start_ptr,
+                .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT
               });
           }
@@ -138,10 +136,10 @@ export namespace Tona {
 
         l_string:
           start_ptr = ++cur;
-          if ((cur = read_string(cur, text.end(), ctx.strings)))
+          if ((cur = read_string(cur, ctx.strings)))
             vec_toks.push_back(Token{
               .str_idx = ctx.strings.size() - 1,
-              .start_ptr = start_ptr,
+              .start = start_ptr,
               .type = TokenType::T_LITERALS_INT
             });
           else goto ERR_UNTERMINATED_STRING;
@@ -168,9 +166,8 @@ export namespace Tona {
             do {
               cur++;
             } while (*cur != '\n' && *cur != '\0');
-            goto *labels[static_cast<std::uint8_t>(*cur)];
           } else if (*cur == '*') {
-            multi_comments:
+        multi_comments:
             do {
               cur++;
             } while (*cur != '*');
@@ -179,13 +176,12 @@ export namespace Tona {
             cur++;
           } else {
             vec_toks.push_back(Token{
-              .start_ptr = cur - 1,
+              .start = cur - 1,
               .type = TokenType::T_OPERATORS_DIV
             });
           }
 
           goto *labels[static_cast<std::uint8_t>(*cur)];
-
 
         pn_bin_prefix:
           cur = consume_digit_sequence<
@@ -196,9 +192,7 @@ export namespace Tona {
           
         pn_oct_prefix:
           cur = consume_digit_sequence<
-            [](char c){
-              return c >= '0' && c <= '7';
-            }
+            is_oct_char
           >(cur);
 
           goto pn_end;
@@ -238,40 +232,34 @@ export namespace Tona {
 
           vec_toks.push_back(Token{
             .text = std::string_view(start_ptr, cur),
-            .start_ptr = start_ptr,
+            .start = start_ptr,
             .type = num_type
           });
 
           goto *labels[static_cast<std::uint8_t>(*cur)];
 
         l_default:
-          return std::unexpected(TokenError{
-
-          });
+          return {};
 
         l_end:
           vec_toks.push_back(Token{
-            .start_ptr = cur,
+            .start = cur,
             .type = TokenType::T_END
           });
           return ctx;
 
         ERR_INVALID_NUMERIC_LITERAL:
-          return std::unexpected(TokenError{
-
-          });
+          return {};
 
         ERR_UNTERMINATED_STRING:
-          return std::unexpected(TokenError{
-
-          });
+          return {};
 
         return ctx;
       }
 
     private:
       template <auto PredFunc, typename FT = decltype(PredFunc)>
-      [[nodiscard]] [[gnu::always_inline]] tccp consume_digit_sequence(tccp start) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] const char* consume_digit_sequence(const char* start) noexcept {
         if constexpr (std::predicate<FT, decltype(*start)>) {
           while (true) {
             if (PredFunc(*start))
@@ -288,48 +276,100 @@ export namespace Tona {
         return start;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] tccp read_string(tccp start, tccp end, std::vector<std::string>& vec_str) noexcept {
-        std::string str;
-        start++;
+      [[nodiscard]] [[gnu::always_inline]] const char* read_string(const char* start, std::vector<std::string>& vec_str) noexcept {
+        constexpr std::uint64_t all_bytes_one     = 0x0101010101010101ULL;
+        constexpr std::uint64_t msb_only_mask     = 0x80 * all_bytes_one;
+
+        constexpr std::uint64_t quote_mask        = '"' * all_bytes_one;
+        constexpr std::uint64_t escape_mask       = '\\' * all_bytes_one;
+        constexpr std::uint64_t carriage_mask     = '\r' * all_bytes_one;
+        constexpr std::uint64_t newline_mask      = '\n' * all_bytes_one;
+
+        const char* prev = start;
+
         while (true) {
-          std::size_t size = end - start;
-          const char* next_quote = static_cast<const char*>(
-            std::memchr(start, '"', size)
-          );
+          std::uint64_t chunk_bytes;
+          std::memcpy(&chunk_bytes, start, 8);
 
-          if (!next_quote) [[unlikely]]
-            return nullptr;
+          std::uint64_t quote_match        = chunk_bytes ^ quote_mask;
+          std::uint64_t escape_match       = chunk_bytes ^ escape_mask;
+          std::uint64_t carriage_match     = chunk_bytes ^ carriage_mask;
+          std::uint64_t newline_match      = chunk_bytes ^ newline_mask;
 
-          const char* next_backslash;
-          next_backslash = static_cast<const char*>(
-            std::memchr(start, '\\', next_quote - start)
-          );
+          std::uint64_t null_minus_one     = chunk_bytes - all_bytes_one;
+          std::uint64_t quote_minus_one    = quote_match - all_bytes_one;
+          std::uint64_t escape_minus_one   = escape_match - all_bytes_one;
+          std::uint64_t carriage_minus_one = carriage_match - all_bytes_one;
+          std::uint64_t newline_minus_one  = newline_match - all_bytes_one;
 
-          if (!next_backslash) {
-            str.append(start, next_quote - start);
-            vec_str.push_back(std::move(str));
-            return next_quote + 1;
-          }
+          std::uint64_t null_inverse       = ~chunk_bytes;
+          std::uint64_t quote_inverse      = ~quote_match;
+          std::uint64_t escape_inverse     = ~escape_match;
+          std::uint64_t carriage_inverse   = ~carriage_match;
+          std::uint64_t newline_inverse    = ~newline_match;
 
-          str.append(start, next_backslash);
-          start = next_backslash;
-          
-          char c;
-          switch (*++start) {
-            case 'a':  c = '\a'; break;
-            case 'b':  c = '\b'; break;
-            case 'f':  c = '\f'; break;
-            case 'n':  c = '\n'; break;
-            case 'r':  c = '\r'; break;
-            case 't':  c = '\t'; break;
-            case 'v':  c = '\v'; break;
-            case '"':  c = '"';  break;
-            case '0':  c = '\0'; break;
-            default:   c = *start; break;
-          }
+          std::uint64_t null_msb_match     = null_minus_one & null_inverse;
+          std::uint64_t quote_msb_match    = quote_minus_one & quote_inverse;
+          std::uint64_t escape_msb_match   = escape_minus_one & escape_inverse;
+          std::uint64_t carriage_msb_match = carriage_minus_one & carriage_inverse;
+          std::uint64_t newline_msb_match  = newline_minus_one & newline_inverse;
 
-          str.push_back(c);
-          start++;
+          std::uint64_t final_invalid_flags = (null_msb_match | quote_msb_match | escape_msb_match | carriage_msb_match | newline_msb_match) & msb_only_mask;
+
+          if (final_invalid_flags) [[unlikely]] {
+            std::size_t size;
+            if constexpr (std::endian::native == std::endian::big)
+              size = (std::countl_zero(final_invalid_flags) >> 3);
+            else
+              size = (std::countr_zero(final_invalid_flags) >> 3);
+            start += size;
+            buffer.stuff_back(prev, start - prev);
+            const char* end = start + 8 - size;
+            while (start < end) {
+              switch (*start) {
+                case '"' :
+                  vec_str.push_back(std::string(buffer.buffer(), buffer.reset()));
+                  return start + 1;
+                case '\0':
+                case '\n':
+                case '\r': return nullptr;
+                case '\\': {
+                  std::uint8_t cur;
+                  switch (*++start) {
+                    case 'n': cur = '\n'; break;
+                    case 'r': cur = '\r'; break;
+                    case 't': cur = '\t'; break;
+                    case 'b': cur = '\b'; break;
+                    case 'f': cur = '\f'; break;
+                    case 'v': cur = '\v'; break;
+                    case 'a': cur = '\a'; break;
+                    case 'x': start++;
+                      for (std::size_t i = 0; i < 2 && is_hex_char(*start); i++) {
+                        cur = cur * 16 + (*start - '0');
+                        start++;
+                      }
+                      goto check_out_range;
+                    default:
+                      if (!is_oct_char(*start)) {
+                        cur = *start++;
+                        break;
+                      }
+                      for (std::size_t i = 0; i < 3 && is_oct_char(*start); i++) {
+                        cur = cur * 8 + (*start - '0');
+                        start++;
+                      }
+                  check_out_range:
+                      if (cur > std::numeric_limits<char>::max())
+                        return nullptr;
+                  }
+                  buffer.stuff_back(cur);
+                }
+                default:
+                  buffer.stuff_back(*start++);
+              }        
+            }
+            prev = start;
+          } else start += 8;
         }
 
         std::unreachable();
@@ -349,13 +389,8 @@ export namespace Tona {
         return table[static_cast<std::uint8_t>(c)];
       }
 
-      [[nodiscard]] [[using gnu:always_inline]] inline tccp identifier_char(tccp start) noexcept {
+      [[nodiscard]] [[using gnu:always_inline]] inline const char* identifier_char(const char* start) noexcept {
         start++;
-        while (reinterpret_cast<std::uintptr_t>(start) & 7) {
-          if (!is_identifier_char(*start))
-            return start;
-          start++;
-        }
         
         constexpr std::uint64_t all_bytes_one     = 0x0101010101010101ULL;
         constexpr std::uint64_t clear_msb_mask    = 0x7F * all_bytes_one;
@@ -395,7 +430,7 @@ export namespace Tona {
           
           std::uint64_t final_invalid_flags = combined_invalid_and_raw & msb_only_mask;
 
-          if (final_invalid_flags != 0) {
+          if (final_invalid_flags) {
             if constexpr (std::endian::native == std::endian::big)
               return start + (std::countl_zero(final_invalid_flags) >> 3);
             else
@@ -447,7 +482,7 @@ export namespace Tona {
 
           final_invalid_flags |= consecutive_sep | boundary_sep;
 
-          if (final_invalid_flags != 0) {
+          if (final_invalid_flags) {
             if constexpr (std::endian::native == std::endian::big)
               return start + (std::countl_zero(final_invalid_flags) >> 3);
             else
@@ -465,6 +500,13 @@ export namespace Tona {
       [[nodiscard]] [[gnu::always_inline]] inline static bool is_dec_char(char c) noexcept {
         return c >= '0' && c <= '9';
       }
+
+      [[nodiscard]] [[gnu::always_inline]] inline static bool is_oct_char(char c) noexcept {
+        return c >= '0' && c <= '7';
+      }
+    
+    private:
+      TBuf buffer{};
   };
 
 }

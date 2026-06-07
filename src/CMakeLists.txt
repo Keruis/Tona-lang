@@ -10,16 +10,18 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(tona STATIC
-  elysia.ixx
+  telysia.ixx
 )
 
 target_sources(tona
   PUBLIC
   FILE_SET CXX_MODULES FILES
-  elysia.ixx
-  types.ixx
-  lexer/lexer.ixx
-  lexer/token.ixx
+  tconfig.ixx
+  cfm/tbuffer.ixx
+  telysia.ixx
+  ttypes.ixx
+  lexer/tlexer.ixx
+  lexer/ttoken.ixx
 )
 
 target_compile_options(tona PRIVATE

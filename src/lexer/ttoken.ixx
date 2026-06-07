@@ -154,17 +154,15 @@ export namespace Tona {
   struct alignas(8) Token {
     union {
       std::string_view text;
-      std::uint64_t str_idx;
+      std::size_t str_idx;
     };
-    tccp start_ptr;
+    Cursor start;
     TokenType type;
   };
 
   struct TokenContext {
-    std::deque<std::string> macro_buffers; // 80
-    std::vector<Token> tokens; // 24
-    std::vector<std::string> strings; // 24
-    std::string_view path; // 16
-  };  // 132
-
+    std::vector<Token> tokens;
+    std::vector<std::string> strings;
+    std::size_t path_idx;
+  };
 }
