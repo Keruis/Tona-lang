@@ -10,36 +10,37 @@ export namespace Tona {
   class TBuf {
     public:
       TBuf() : cap(TBUF_INIT_SIZE) {
-        buf = new char[TBUF_INIT_SIZE];
+        buf = new t_byte[TBUF_INIT_SIZE];
       }
       ~TBuf() {
         delete[] buf;
       }
 
-      void stuff_back(char c) {
+      void stuff_back(t_c c) {
         reserve(size + 1);
         buf[size++] = c;
       }
 
-      void stuff_back(const char* src, std::size_t len) {
+      void stuff_back(t_rcp src, usize len) {
         reserve(size + len);
         std::memcpy(buf + size, src, len);
       }
 
-      std::size_t reset() {
+      usize reset() {
         std::size_t old_size = size;
         size = 0;
         return old_size;
       }
 
-      t_rbytes buffer() {
-        return buf;
+      template <typename RT>
+      RT buffer() {
+        return reinterpret_cast<RT>(buf);
       }
 
     private:
-      void reserve(std::size_t min_size) {
+      void reserve(usize min_size) {
         if (min_size > cap) {
-          std::size_t alloc_size = min_size * TBUF_GROWTH_FACTOR;
+          usize alloc_size = min_size * TBUF_GROWTH_FACTOR;
           t_rbytes old_ptr = buf;
           buf = new t_byte[alloc_size];
           cap = alloc_size;
@@ -50,7 +51,7 @@ export namespace Tona {
 
     private:
       t_bytes buf;
-      std::size_t size;
-      std::size_t cap;
+      usize size;
+      usize cap;
   };
 }

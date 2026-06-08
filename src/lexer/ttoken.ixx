@@ -6,7 +6,7 @@ import tona.types;
 
 export namespace Tona {
 
-  enum class TokenType : std::uint8_t {
+  enum class TokenType : u8 {
     T_END = 0,
 
     T_OPERATORS_NOT = '!', // 33
@@ -35,10 +35,9 @@ export namespace Tona {
     T_IDENTIFIER = 160,
 
     T_KEYWORD_VAR = 161,
-    T_KEYWORD_CONST = 162,
-    T_KEYWORD_IF = 163,
-    T_KEYWORD_ELSE = 164,
-    T_KEYWORD_FUN = 165,
+    T_KEYWORD_IF = 162,
+    T_KEYWORD_ELSE = 163,
+    T_KEYWORD_FUN = 164,
     T_KEYWORD_FOR = 165, //166,
     T_KEYWORD_TRUE = 166, //167,
     T_KEYWORD_FALSE = 167, //168,
@@ -69,15 +68,15 @@ export namespace Tona {
     std::array<TokenInfo, 256> table{};
 
     auto op = [&](TokenType t, std::uint32_t prec) { 
-      table[static_cast<std::size_t>(t)] = {TokenClass::C_OPERATOR, prec}; 
+      table[cast_usize(t)] = {TokenClass::C_OPERATOR, prec}; 
     };
     
     auto pun = [&](TokenType t) { 
-      table[static_cast<std::size_t>(t)] = {TokenClass::C_PUNCTUATOR, 0}; 
+      table[cast_usize(t)] = {TokenClass::C_PUNCTUATOR, 0}; 
     };
 
     auto kw = [&](TokenType t) { 
-      table[static_cast<std::size_t>(t)] = {TokenClass::C_KEYWORD, 0}; 
+      table[cast_usize(t)] = {TokenClass::C_KEYWORD, 0}; 
     };
 
     op(TokenType::T_OPERATORS_ASSIGN, 1);
@@ -104,7 +103,6 @@ export namespace Tona {
     pun(TokenType::T_PUNCTUATORS_SEMICOLON);
 
     kw(TokenType::T_KEYWORD_VAR);
-    kw(TokenType::T_KEYWORD_CONST);
     kw(TokenType::T_KEYWORD_IF);
     kw(TokenType::T_KEYWORD_ELSE);
     kw(TokenType::T_KEYWORD_FUN);
@@ -112,20 +110,20 @@ export namespace Tona {
     kw(TokenType::T_KEYWORD_TRUE);
     kw(TokenType::T_KEYWORD_FALSE);
 
-    table[static_cast<std::size_t>(TokenType::T_LITERALS_INT)]    = {TokenClass::C_LITERAL, 0};
-    table[static_cast<std::size_t>(TokenType::T_LITERALS_FLOAT)]  = {TokenClass::C_LITERAL, 0};
-    table[static_cast<std::size_t>(TokenType::T_LITERALS_INT_SUF)]    = {TokenClass::C_LITERAL, 0};
-    table[static_cast<std::size_t>(TokenType::T_LITERALS_FLOAT_SUF)]  = {TokenClass::C_LITERAL, 0};
-    table[static_cast<std::size_t>(TokenType::T_LITERALS_STRING)] = {TokenClass::C_LITERAL, 0};
+    table[cast_usize(TokenType::T_LITERALS_INT)]    = {TokenClass::C_LITERAL, 0};
+    table[cast_usize(TokenType::T_LITERALS_FLOAT)]  = {TokenClass::C_LITERAL, 0};
+    table[cast_usize(TokenType::T_LITERALS_INT_SUF)]    = {TokenClass::C_LITERAL, 0};
+    table[cast_usize(TokenType::T_LITERALS_FLOAT_SUF)]  = {TokenClass::C_LITERAL, 0};
+    table[cast_usize(TokenType::T_LITERALS_STRING)] = {TokenClass::C_LITERAL, 0};
 
-    table[static_cast<std::size_t>(TokenType::T_IDENTIFIER)] = {TokenClass::C_IDENTIFIER, 0};
+    table[cast_usize(TokenType::T_IDENTIFIER)] = {TokenClass::C_IDENTIFIER, 0};
 
-    table[static_cast<std::size_t>(TokenType::T_END)] = {TokenClass::C_END, 0};
+    table[cast_usize(TokenType::T_END)] = {TokenClass::C_END, 0};
 
     return table;
   }();
 
-  constexpr std::size_t keyword_start_index = static_cast<std::size_t>(TokenType::T_KEYWORD_VAR);
+  constexpr usize keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
 
   struct Keyword {
     std::string_view key;
@@ -134,7 +132,6 @@ export namespace Tona {
 
   const std::flat_map<std::string_view, TokenType> keywords {
     {"var", TokenType::T_KEYWORD_VAR},
-    {"const", TokenType::T_KEYWORD_CONST},
     {"if", TokenType::T_KEYWORD_IF},
     {"else", TokenType::T_KEYWORD_ELSE},
     {"fn", TokenType::T_KEYWORD_FUN},
@@ -154,15 +151,15 @@ export namespace Tona {
   struct alignas(8) Token {
     union {
       std::string_view text;
-      std::size_t str_idx;
+      usize str_idx;
     };
-    Cursor start;
+    t_rcp start;
     TokenType type;
   };
 
   struct TokenContext {
     std::vector<Token> tokens;
     std::vector<std::string> strings;
-    std::size_t path_idx;
+    usize path_idx;
   };
 }
