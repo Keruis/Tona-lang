@@ -50,7 +50,7 @@ export namespace Tona {
     _ = 255
   };
 
-  enum class TokenClass : std::uint32_t {
+  enum class TokenClass : u32 {
     C_END = 0,
     C_IDENTIFIER,
     C_OPERATOR,
@@ -61,13 +61,13 @@ export namespace Tona {
 
   struct TokenInfo {
     TokenClass cls = TokenClass::C_END;
-    std::uint32_t precedence = 0;
+    u32 precedence = 0;
   };
 
   constexpr auto tokens_info = [] {
     std::array<TokenInfo, 256> table{};
 
-    auto op = [&](TokenType t, std::uint32_t prec) { 
+    auto op = [&](TokenType t, u32 prec) { 
       table[cast_usize(t)] = {TokenClass::C_OPERATOR, prec}; 
     };
     
@@ -150,7 +150,10 @@ export namespace Tona {
 
   struct alignas(8) Token {
     union {
-      std::string_view text;
+      struct {
+        t_rcp data;
+        usize len;
+      } text;
       usize str_idx;
     };
     t_rcp start;

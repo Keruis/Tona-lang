@@ -9,12 +9,12 @@ import tona.buf;
 #define PARSE_DOUBLE_CHAR(last_char, double_type, one_type) \
   if (*++cur == last_char) {         \
     cur++;                           \
-    vec_toks.push_back(Token{        \
+    emit({                           \
       .start = cur - 2,              \
       .type = TokenType::double_type \
     });                              \
   } else {                           \
-    vec_toks.push_back(Token{        \
+    emit({                           \
       .start = cur - 1,              \
       .type = TokenType::one_type    \
     });                              \
@@ -27,10 +27,18 @@ export namespace Tona {
       [[nodiscard]] TokenContext tokenize(std::string_view text) noexcept {
         TokenContext ctx;
 
-        t_cursor cur = text.data();
-
         auto& vec_toks = ctx.tokens;
-        vec_toks.reserve(text.size() / 5);
+        vec_toks.resize(text.size() / 5);
+
+        t_cursor cur = text.data();
+        Token* dst = vec_toks.data();
+        Token* end = vec_toks.data() + vec_toks.size();
+
+        auto emit = [&][[gnu::always_inline]](Token&& tok) {
+          if (dst == end) [[unlikely]]
+            grow_tokens(vec_toks, dst, end);
+          *dst++ = std::move(tok);
+        };
 
         t_rcp start_ptr = nullptr;
         TokenType num_type = TokenType::_;
@@ -54,12 +62,15 @@ export namespace Tona {
           if (
             auto res = find_keyword(identifier); 
             res == TokenType::T_IDENTIFIER
-          ) vec_toks.push_back(Token{
-              .text = identifier,
+          ) emit({
+              .text = {
+                .data = cur,
+                .len = identifier.size()
+              },
               .start = cur,
               .type = res
             });
-          else vec_toks.push_back(Token{
+          else emit({
             .start = cur,
             .type = TokenType::T_IDENTIFIER
           });
@@ -69,7 +80,7 @@ export namespace Tona {
 
         l_op_chars:
         l_punc_chars:
-          vec_toks.push_back(Token{
+          emit({
             .start = cur,
             .type = static_cast<TokenType>(*cur)
           });
@@ -97,8 +108,11 @@ export namespace Tona {
             default:
               if (is_dec_char(*cur)) [[unlikely]]
                 goto ERR_INVALID_NUMERIC_LITERAL;
-              vec_toks.push_back(Token{
-                .text = std::string_view(start_ptr, 1),
+              emit({
+                .text = {
+                  .data = start_ptr, 
+                  .len = 1
+                },
                 .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT
               });
@@ -125,8 +139,11 @@ export namespace Tona {
             default:
               if (is_identifier_char(*cur))
                 goto ERR_INVALID_NUMERIC_LITERAL;
-              vec_toks.push_back(Token{
-                .text = std::string_view(start_ptr, cur),
+              emit({
+                .text = {
+                  .data = start_ptr, 
+                  .len = cast_usize(cur - start_ptr)
+                },
                 .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT
               });
@@ -137,10 +154,10 @@ export namespace Tona {
         l_string:
           start_ptr = ++cur;
           if ((cur = read_string(cur, ctx.strings)))
-            vec_toks.push_back(Token{
+            emit({
               .str_idx = ctx.strings.size() - 1,
               .start = start_ptr,
-              .type = TokenType::T_LITERALS_INT
+              .type = TokenType::T_LITERALS_STRING
             });
           else goto ERR_UNTERMINATED_STRING;
           goto *labels[cast_u8(*cur)];
@@ -175,7 +192,7 @@ export namespace Tona {
               goto multi_comments;
             cur++;
           } else {
-            vec_toks.push_back(Token{
+            emit({
               .start = cur - 1,
               .type = TokenType::T_OPERATORS_DIV
             });
@@ -225,13 +242,25 @@ export namespace Tona {
         pn_end:
           if (*cur == '\'') [[unlikely]]
             goto ERR_INVALID_NUMERIC_LITERAL;
-
+          switch (*cur) {
+            case 'u':
+            case 'U':
+            case 'i':
+            case 'I': num_type = TokenType::T_LITERALS_INT_SUF;
+            case 'f':
+            case 'F': num_type = TokenType::T_LITERALS_FLOAT_SUF;
+            default: goto pn_save;
+          }
+          cur++;
         pn_suf_num:
           while (is_dec_char(*cur))
             cur++;
-
-          vec_toks.push_back(Token{
-            .text = std::string_view(start_ptr, cur),
+        pn_save:
+          emit({
+            .text = {
+              .data = start_ptr, 
+              .len = cast_usize(cur - start_ptr)
+            },
             .start = start_ptr,
             .type = num_type
           });
@@ -242,10 +271,11 @@ export namespace Tona {
           return {};
 
         l_end:
-          vec_toks.push_back(Token{
+          emit({
             .start = cur,
             .type = TokenType::T_END
           });
+          vec_toks.resize(dst - vec_toks.data());
           return ctx;
 
         ERR_INVALID_NUMERIC_LITERAL:
@@ -258,6 +288,13 @@ export namespace Tona {
       }
 
     private:
+      [[gnu::noinline]] void grow_tokens(std::vector<Token>& vec, Token*& dst, Token*& end) noexcept {
+        usize idx = dst - vec.data();
+        vec.resize(vec.size() * 2);
+        dst = vec.data() + idx;
+        end = vec.data() + vec.size();
+      }
+
       template <auto PredFunc, typename FT = decltype(PredFunc)>
       [[nodiscard]] [[gnu::always_inline]] t_rcp consume_digit_sequence(t_rcp start) noexcept {
         if constexpr (std::predicate<FT, decltype(*start)>) {
@@ -328,7 +365,8 @@ export namespace Tona {
             while (start < end) {
               switch (*start) {
                 case '"' :
-                  vec_str.push_back(std::string(buffer.buffer<t_rcp>(), buffer.reset()));
+                  vec_str.push_back(std::string(buffer.buffer<t_rcp>(), buffer.buf_size()));
+                  buffer.reset();
                   return start + 1;
                 case '\0':
                 case '\n':

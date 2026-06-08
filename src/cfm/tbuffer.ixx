@@ -24,6 +24,11 @@ export namespace Tona {
       void stuff_back(t_rcp src, usize len) {
         reserve(size + len);
         std::memcpy(buf + size, src, len);
+        size += len;
+      }
+
+      usize buf_size() {
+        return size;
       }
 
       usize reset() {
