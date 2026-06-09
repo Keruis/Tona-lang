@@ -6,6 +6,8 @@ import tona.types;
 
 export namespace Tona {
 
+  constexpr std::uint8_t double_char_offset = 93;
+
   enum class TokenType : std::uint8_t {
     T_END = 0,
 
@@ -23,10 +25,10 @@ export namespace Tona {
     T_OPERATORS_LT = '<', // 60
     T_OPERATORS_ASSIGN = '=', // 61
     T_OPERATORS_GT = '>', // 62
-    T_OPERATORS_LE = '>' + 1, // 63
-    T_OPERATORS_GE = '>' + 2, // 64
-    T_OPERATORS_EQ = '>' + 3, // 65
-    T_OPERATORS_NEQ = '>' + 4,  // 66
+    T_OPERATORS_LE = '<' + double_char_offset, // 147 <=
+    T_OPERATORS_GE = '>' + double_char_offset, // 149 >=
+    T_OPERATORS_EQ = '=' + double_char_offset, // 148 ==
+    T_OPERATORS_NEQ = '!' + double_char_offset,  // 120 !=
     T_PUNCTUATORS_LBRACKET = '[', // 91
     T_PUNCTUATORS_RBRACKET = ']', // 93
     T_PUNCTUATORS_LBRACE = '{', // 123
@@ -91,6 +93,7 @@ export namespace Tona {
     op(TokenType::T_OPERATORS_MUL, 4);
     op(TokenType::T_OPERATORS_DIV, 4);
     op(TokenType::T_OPERATORS_MOD, 4);
+    op(TokenType::T_OPERATORS_NOT, 0);
 
     pun(TokenType::T_PUNCTUATORS_LPAREN);
     pun(TokenType::T_PUNCTUATORS_RPAREN);

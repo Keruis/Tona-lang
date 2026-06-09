@@ -6,20 +6,6 @@ import tona.types;
 import tona.token;
 import tona.buf;
 
-#define PARSE_DOUBLE_CHAR(last_char, double_type, one_type) \
-  if (*++cur == last_char) {         \
-    cur++;                           \
-    emit({                           \
-      .start = cur - 2,              \
-      .type = TokenType::double_type \
-    });                              \
-  } else {                           \
-    emit({                           \
-      .start = cur - 1,              \
-      .type = TokenType::one_type    \
-    });                              \
-  }
-
 export namespace Tona {
 
   class Lexer {
@@ -49,14 +35,14 @@ export namespace Tona {
 
         goto *labels[cast_u8(*cur)];
         
-        l_skip:
-        l_newline:
+        l_skip: // ' '
+        l_newline: // '\n'
           do {
             cur++;
           } while (*cur == ' ' || *cur == '\t' || *cur == '\n');
           goto *labels[cast_u8(*cur)];
           
-        l_identifier: {
+        l_identifier: { // a - z A - Z _
           const char* const end_ptr = identifier_char(cur);
           std::string_view identifier(cur, end_ptr);
           if (
@@ -78,15 +64,15 @@ export namespace Tona {
           goto *labels[cast_u8(*(cur = end_ptr))];
         }
 
-        l_op_chars:
-        l_punc_chars:
+        l_op_chars: // ! % * + - /
+        l_punc_chars: // () [] : ; {}
           emit({
             .start = cur,
             .type = static_cast<TokenType>(*cur)
           });
           goto *labels[cast_u8(*++cur)];
 
-        l_digit_0:
+        l_digit_0: // 0
           start_ptr = cur++;
           switch (*cur) {
             case 'b' :
@@ -97,9 +83,7 @@ export namespace Tona {
             case 'X' : cur++; goto pn_hex_prefix;
             case '.' : cur++; goto pn_franction_direct;
             case 'e' :
-            case 'E' : cur++; 
-              num_type = TokenType::T_LITERALS_FLOAT; 
-              goto pn_exponect_direct;
+            case 'E' : cur++; goto pn_exponect_direct;
             case 'u' :
             case 'U' :
             case 'i' :
@@ -122,7 +106,7 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
           
-        l_digit_1_9:
+        l_digit_1_9: // 1 - 9
           start_ptr = cur++;
           cur = consume_digit_sequence<
             is_dec_char
@@ -130,9 +114,7 @@ export namespace Tona {
           switch (*cur) {
             case '.' : cur++; goto pn_franction_direct;
             case 'e' :
-            case 'E' : cur++; 
-              num_type = TokenType::T_LITERALS_FLOAT; 
-              goto pn_exponect_direct;
+            case 'E' : cur++; goto pn_exponect_direct;
             case 'u' :
             case 'U' :
             case 'i' :
@@ -155,7 +137,7 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
 
-        l_string:
+        l_string: // "
           start_ptr = ++cur;
           if ((cur = read_string(cur, ctx.strings)))
             emit({
@@ -166,23 +148,40 @@ export namespace Tona {
           else goto ERR_UNTERMINATED_STRING;
           goto *labels[cast_u8(*cur)];
 
+        { // = == < <= > >= ! !=
+          TokenType double_type;
         l_assign:
-          PARSE_DOUBLE_CHAR('=', T_OPERATORS_EQ, T_OPERATORS_ASSIGN)
-          goto *labels[cast_u8(*cur)];
-
+          double_type = TokenType::T_OPERATORS_EQ;
+          goto check_double_type;
         l_less:
-          PARSE_DOUBLE_CHAR('=', T_OPERATORS_LE, T_OPERATORS_LT)
-          goto *labels[cast_u8(*cur)];
-
+          double_type = TokenType::T_OPERATORS_LE;
+          goto check_double_type;
         l_greater:
-          PARSE_DOUBLE_CHAR('=', T_OPERATORS_GE, T_OPERATORS_GT)
-          goto *labels[cast_u8(*cur)];
-
+          double_type = TokenType::T_OPERATORS_GE;
+          goto check_double_type;
         l_not:
-          PARSE_DOUBLE_CHAR('=', T_OPERATORS_NEQ, T_OPERATORS_NOT)
+          double_type = TokenType::T_OPERATORS_NEQ;
+        check_double_type:
+          const char* const start_ptr = cur;
+          if (cur[1] == '=') {
+            cur += 2;
+            emit({
+              .start = start_ptr,
+              .type = double_type
+            });
+          } else {
+            cur++;
+            emit({
+              .start = start_ptr,
+              .type = static_cast<TokenType>(
+                static_cast<std::uint8_t>(double_type) - double_char_offset
+              )
+            });
+          }
+        }
           goto *labels[cast_u8(*cur)];
 
-        l_div:
+        l_div: // / // /* */
           if (*++cur == '/') {
             do {
               cur++;
@@ -205,6 +204,7 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
 
+        // chu li float
         pn_bin_prefix:
           cur = consume_digit_sequence<
             bin_char
@@ -227,7 +227,6 @@ export namespace Tona {
           goto pn_end;
 
         pn_franction_direct:
-          num_type = TokenType::T_LITERALS_FLOAT;
           cur = consume_digit_sequence<
             is_dec_char
           >(cur);
@@ -242,6 +241,7 @@ export namespace Tona {
               is_dec_char
             >(cur);
           }
+          num_type = TokenType::T_LITERALS_FLOAT;
 
         pn_end:
           if (cur[-1] == '\'') [[unlikely]]
@@ -286,6 +286,7 @@ export namespace Tona {
           vec_toks.resize(dst - vec_toks.data());
           return ctx;
 
+        // zan shi ma you xian hao zen me chu li error
         l_default:
 
         ERR_INVALID_NUMERIC_LITERAL:
@@ -294,7 +295,7 @@ export namespace Tona {
 
         ERR_UNCLOSE_COMMENT:
 
-        return ctx;
+        std::unreachable();
       }
 
     private:
@@ -426,8 +427,6 @@ export namespace Tona {
             prev = start;
           } else start += 8;
         }
-
-        std::unreachable();
       }
 
     private:
