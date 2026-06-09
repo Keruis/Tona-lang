@@ -4,32 +4,12 @@ import std;
 
 export namespace Tona {
 
-  using u8 = std::uint8_t;
-  using u32 = std::uint32_t;
-  using u64 = std::uint64_t;
-  using usize = std::size_t;
-  using t_c = char;
-  using t_byte = u8;
-  using t_lable = void*;
-
-  using t_cp = t_c*;
-  using t_rcp = const t_c*;
-  using t_crcp = const t_c* const;
-
-  using t_bytes = t_byte*;
-  using t_rbytes = const t_byte*;
-
-  using t_cursor = t_rcp;
-
-  [[nodiscard]] constexpr u8 cast_u8(auto val) {
-    return static_cast<u8>(val);
+  [[nodiscard]] constexpr std::uint8_t cast_u8(auto val) {
+    return static_cast<std::uint8_t>(val);
   }
 
-  [[nodiscard]] constexpr usize cast_usize(auto val) {
-    return static_cast<usize>(val);
+  [[nodiscard]] constexpr std::size_t cast_usize(auto val) {
+    return static_cast<std::size_t>(val);
   }
 
 }
-
-
-

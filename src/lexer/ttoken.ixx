@@ -6,7 +6,7 @@ import tona.types;
 
 export namespace Tona {
 
-  enum class TokenType : u8 {
+  enum class TokenType : std::uint8_t {
     T_END = 0,
 
     T_OPERATORS_NOT = '!', // 33
@@ -50,7 +50,7 @@ export namespace Tona {
     _ = 255
   };
 
-  enum class TokenClass : u32 {
+  enum class TokenClass : std::uint32_t {
     C_END = 0,
     C_IDENTIFIER,
     C_OPERATOR,
@@ -61,13 +61,13 @@ export namespace Tona {
 
   struct TokenInfo {
     TokenClass cls = TokenClass::C_END;
-    u32 precedence = 0;
+    std::uint32_t precedence = 0;
   };
 
   constexpr auto tokens_info = [] {
     std::array<TokenInfo, 256> table{};
 
-    auto op = [&](TokenType t, u32 prec) { 
+    auto op = [&](TokenType t, std::uint32_t prec) { 
       table[cast_usize(t)] = {TokenClass::C_OPERATOR, prec}; 
     };
     
@@ -123,7 +123,7 @@ export namespace Tona {
     return table;
   }();
 
-  constexpr usize keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
+  constexpr std::size_t keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
 
   struct Keyword {
     std::string_view key;
@@ -151,18 +151,18 @@ export namespace Tona {
   struct alignas(8) Token {
     union {
       struct {
-        t_rcp data;
-        usize len;
+        const char* data;
+        std::size_t len;
       } text;
-      usize str_idx;
+      std::size_t str_idx;
     };
-    t_rcp start;
+    const char* start;
     TokenType type;
   };
 
   struct TokenContext {
     std::vector<Token> tokens;
     std::vector<std::string> strings;
-    usize path_idx;
+    std::size_t path_idx;
   };
 }

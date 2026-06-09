@@ -10,31 +10,34 @@ export namespace Tona {
   class TBuf {
     public:
       TBuf() : cap(TBUF_INIT_SIZE) {
-        buf = new t_byte[TBUF_INIT_SIZE];
+        buf = new std::byte[TBUF_INIT_SIZE];
       }
       ~TBuf() {
         delete[] buf;
       }
 
-      void stuff_back(t_c c) {
-        reserve(size + 1);
-        buf[size++] = c;
+      template <typename T>
+        requires(std::is_trivially_copyable_v<T>)
+      void stuff_back(const T& obj) {
+        reserve(size + sizeof(T));
+        std::memcpy(&buf[size], &obj, sizeof(T));
+        size += sizeof(T);
       }
 
-      void stuff_back(t_rcp src, usize len) {
+      template <typename T>
+        requires(std::is_trivially_copyable_v<T>)
+      void stuff_back(const T* src, std::size_t len) {
         reserve(size + len);
-        std::memcpy(buf + size, src, len);
-        size += len;
+        std::memcpy(&buf[size], src, len * sizeof(T));
+        size += (len * sizeof(T));
       }
 
-      usize buf_size() {
+      std::size_t buf_size() {
         return size;
       }
 
-      usize reset() {
-        std::size_t old_size = size;
+      void reset() {
         size = 0;
-        return old_size;
       }
 
       template <typename RT>
@@ -43,11 +46,11 @@ export namespace Tona {
       }
 
     private:
-      void reserve(usize min_size) {
+      void reserve(std::size_t min_size) {
         if (min_size > cap) {
-          usize alloc_size = min_size * TBUF_GROWTH_FACTOR;
-          t_rbytes old_ptr = buf;
-          buf = new t_byte[alloc_size];
+          std::size_t alloc_size = min_size * TBUF_GROWTH_FACTOR;
+          std::byte* old_ptr = buf;
+          buf = new std::byte[alloc_size];
           cap = alloc_size;
           std::memcpy(buf, old_ptr, size);
           delete[] old_ptr;
@@ -55,8 +58,8 @@ export namespace Tona {
       }
 
     private:
-      t_bytes buf;
-      usize size;
-      usize cap;
+      std::byte* buf;
+      std::size_t size;
+      std::size_t cap;
   };
 }
