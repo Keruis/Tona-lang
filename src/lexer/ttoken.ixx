@@ -2,7 +2,7 @@ export module tona.token;
 
 import std;
 
-import tona.types;
+import tona.byte;
 
 export namespace Tona {
 

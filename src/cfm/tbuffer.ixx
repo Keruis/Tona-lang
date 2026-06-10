@@ -3,7 +3,6 @@ export module tona.buf;
 import std;
 
 import tona.config;
-import tona.types;
 
 export namespace Tona {
 
