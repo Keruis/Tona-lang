@@ -5,12 +5,13 @@ import std;
 import tona.token;
 import tona.buf;
 import tona.byte;
+import tona.error;
 
 export namespace Tona {
 
   class Lexer {
     public:
-      [[nodiscard]] TokenContext tokenize(std::string_view text) noexcept {
+      [[nodiscard]] std::expected<TokenContext, LexError> tokenize(std::string_view text) noexcept {
         TokenContext ctx;
 
         auto& vec_toks = ctx.tokens;
@@ -97,10 +98,15 @@ export namespace Tona {
             case 'I' : cur++; goto pn_suf_num_i;
             case 'f' :
             case 'F' : cur++; goto pn_suf_num_f;
-            case '\'': goto ERR_INVALID_NUMERIC_LITERAL;
+            [[unlikely]] case '\'': return std::unexpected(
+              LexError{
+                .err_text = std::string_view(start_ptr, cur),
+                .type = LexErrorType::LET_INVALID_DIGIT_SEPARATOR
+              }
+            );
             default:
               if (is_identifier_char(*cur)) [[unlikely]]
-                goto ERR_INVALID_NUMERIC_LITERAL;
+                goto pn_error;
               emit({
                 .text = {
                   .data = start_ptr, 
@@ -114,14 +120,20 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         l_string: // "
-          start_ptr = ++cur;
-          if ((cur = read_string(cur, ctx.strings)))
+          if (auto res = read_string(&cur[1], ctx.strings)) {
             emit({
               .str_idx = ctx.strings.size() - 1,
-              .start = start_ptr,
+              .start = cur,
               .type = TokenType::T_LITERALS_STRING
             });
-          else goto ERR_UNTERMINATED_STRING;
+            cur = res.value();
+          } else [[unlikely]]
+            return std::unexpected(
+              LexError{
+                .err_text = std::string_view(cur, res.error()),
+                .type = LexErrorType::LET_UNTERMINATED_STRING
+              }
+            );
           goto *labels[cast_u8(*cur)];
 
         { // = == < <= > >= ! !=
@@ -166,7 +178,12 @@ export namespace Tona {
             while (true) {
               cur++;
               if (*cur == '\0') [[unlikely]]
-                goto ERR_UNCLOSE_COMMENT;
+                return std::unexpected(
+                  LexError{
+                    .err_text = std::string_view(cur, 1),
+                    .type = LexErrorType::LET_UNCLOSE_COMMENT
+                  }
+                );
               if (*cur == '*' && cur[1] == '/')
                 break;
             }
@@ -211,8 +228,8 @@ export namespace Tona {
         pn_exponect_direct:
             if (*cur == '+' || *cur == '-')
               cur++;
-            if (!is_dec_char(*cur))
-              goto ERR_INVALID_NUMERIC_LITERAL;
+            if (!is_dec_char(*cur)) [[unlikely]]
+              goto pn_error;
             cur = consume_digit_sequence<
               is_dec_char
             >(cur);
@@ -221,19 +238,19 @@ export namespace Tona {
 
         pn_end:
           if (cur[-1] == '\'') [[unlikely]]
-            goto ERR_INVALID_NUMERIC_LITERAL;
+            goto pn_error;
   
           switch (*cur) {
             case 'u':
             case 'U':
             case 'i':
-        pn_suf_num_i:
-            case 'I': 
+            case 'I':
+        pn_suf_num_i: 
               num_type = TokenType::T_LITERALS_INT_SUF; 
               break;
             case 'f':
-        pn_suf_num_f:
-            case 'F': 
+            case 'F':
+        pn_suf_num_f: 
               num_type = TokenType::T_LITERALS_FLOAT_SUF; 
               break;
             default: goto pn_save;
@@ -254,6 +271,14 @@ export namespace Tona {
           num_type = TokenType::T_LITERALS_INT;
           goto *labels[cast_u8(*cur)];
 
+        pn_error:
+          return std::unexpected(
+            LexError{
+              .err_text = std::string_view(start_ptr, cur),
+              .type = LexErrorType::LET_INVALID_NUMERIC_LITERAL
+            }
+          );
+
         l_end:
           emit({
             .start = cur,
@@ -262,26 +287,19 @@ export namespace Tona {
 
           return ctx;
 
-        // zan shi ma you xian hao zen me chu li error
-        l_default:
-
-        ERR_INVALID_NUMERIC_LITERAL:
-
-        ERR_UNTERMINATED_STRING:
-
-        ERR_UNCLOSE_COMMENT:
-
-        std::unreachable();
+        l_default: {
+          std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
+          len = (len == 0 || len > 4) ? 1 : len;
+          return std::unexpected(
+            LexError{
+              .err_text = std::string_view(cur, len),
+              .type = LexErrorType::LET_INVALID_CHAR
+            }
+          );
+        }
       }
 
     private:
-      [[gnu::noinline]] void grow_tokens(std::vector<Token>& vec, Token*& dst, Token*& end) noexcept {
-        std::size_t idx = dst - vec.data();
-        vec.reserve(vec.capacity() * 2);
-        dst = vec.data() + idx;
-        end = vec.data() + vec.capacity();
-      }
-
       template <auto PredFunc, typename FT = decltype(PredFunc)>
       [[nodiscard]] [[gnu::always_inline]] inline const char* consume_digit_sequence(const char* start) noexcept {
         if constexpr (std::predicate<FT, decltype(*start)>) {
@@ -300,7 +318,7 @@ export namespace Tona {
         return start;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline const char* read_string(const char* start, std::vector<std::string>& vec_str) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, std::vector<std::string>& vec_str) noexcept {
         const char* prev = start;
 
         while (true) {
@@ -345,8 +363,9 @@ export namespace Tona {
                   return start + 1;
                 case '\0':
                 case '\n':
-                case '\r': return nullptr;
+                case '\r': return std::unexpected(start);
                 case '\\': {
+                  const char* escape_ptr = start;
                   std::uint8_t cur = 0;
                   switch (*++start) {
                     case 'n': cur = '\n'; break;
@@ -378,7 +397,7 @@ export namespace Tona {
                       }
                   check_out_range:
                       if (cur > std::numeric_limits<std::uint8_t>::max())
-                        return nullptr;
+                        return std::unexpected(escape_ptr);
                   }
                   buffer.stuff_back(cur);
                   break;
@@ -503,7 +522,7 @@ export namespace Tona {
       }
     
     private:
-      TBuf buffer{};
+      Buf buffer{};
   };
 
 }

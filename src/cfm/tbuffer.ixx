@@ -6,12 +6,12 @@ import tona.config;
 
 export namespace Tona {
 
-  class TBuf {
+  class Buf {
     public:
-      TBuf() : cap(TBUF_INIT_SIZE) {
+      Buf() : cap(TBUF_INIT_SIZE) {
         buf = new std::byte[TBUF_INIT_SIZE];
       }
-      ~TBuf() {
+      ~Buf() {
         delete[] buf;
       }
 
