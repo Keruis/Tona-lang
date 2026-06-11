@@ -11,19 +11,21 @@ export namespace Tona {
         if (!std::filesystem::exists(path, ec) || !std::filesystem::is_regular_file(path, ec))
           return std::unexpected(ec); 
 
-        std::ifstream file(path);
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
         if (!file)
           return std::unexpected(std::make_error_code(std::errc::io_error));
-
-        std::uintmax_t size;
-        if (std::filesystem::file_size(path, ec) == static_cast<std::uintmax_t>(-1))
-          return std::unexpected(ec);
+        
+        std::uintmax_t size = file.tellg();
 
         std::string buffer;
         buffer.resize(size + 16);
 
+        file.seekg(0);
+
         if (!file.read(&buffer[0], size))
           return std::unexpected(std::make_error_code(std::errc::io_error));
+
+        buffer.resize(size);
 
         return buffer;
       }

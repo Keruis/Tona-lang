@@ -9,10 +9,10 @@ set(CMAKE_CXX_MODULE_STD 1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
+
 file(GLOB_RECURSE ALL_IXX_FILES CONFIGURE_DEPENDS 
   "src/*.ixx"
-  "src/cfm/*.ixx"
-  "src/lexer/*.ixx"
 )
 
 add_executable(tona

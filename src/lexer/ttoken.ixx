@@ -40,9 +40,10 @@ export namespace Tona {
     T_KEYWORD_IF = 162,
     T_KEYWORD_ELSE = 163,
     T_KEYWORD_FUN = 164,
-    T_KEYWORD_FOR = 165, //166,
-    T_KEYWORD_TRUE = 166, //167,
-    T_KEYWORD_FALSE = 167, //168,
+    T_KEYWORD_FOR = 165,
+    T_KEYWORD_TRUE = 166,
+    T_KEYWORD_FALSE = 167,
+    T_KEYWORD_RETURN = 168,
 
     T_LITERALS_INT = 220,
     T_LITERALS_FLOAT = 221,
@@ -112,6 +113,7 @@ export namespace Tona {
     kw(TokenType::T_KEYWORD_FOR);
     kw(TokenType::T_KEYWORD_TRUE);
     kw(TokenType::T_KEYWORD_FALSE);
+    kw(TokenType::T_KEYWORD_RETURN);
 
     table[cast_usize(TokenType::T_LITERALS_INT)]    = {TokenClass::C_LITERAL, 0};
     table[cast_usize(TokenType::T_LITERALS_FLOAT)]  = {TokenClass::C_LITERAL, 0};
@@ -140,7 +142,8 @@ export namespace Tona {
     {"fn", TokenType::T_KEYWORD_FUN},
     {"for", TokenType::T_KEYWORD_FOR},
     {"true", TokenType::T_KEYWORD_TRUE},
-    {"false", TokenType::T_KEYWORD_FALSE}
+    {"false", TokenType::T_KEYWORD_FALSE},
+    {"return", TokenType::T_KEYWORD_RETURN}
   };
 
   TokenType find_keyword(std::string_view text) {

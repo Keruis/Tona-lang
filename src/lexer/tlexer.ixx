@@ -51,11 +51,11 @@ export namespace Tona {
                 .len = identifier.size()
               },
               .start = cur,
-              .type = res
+              .type = TokenType::T_IDENTIFIER
             });
           else emit({
             .start = cur,
-            .type = TokenType::T_IDENTIFIER
+            .type = res
           });
 
           goto *labels[cast_u8(*(cur = end_ptr))];
