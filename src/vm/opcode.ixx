@@ -28,6 +28,14 @@ export namespace Tona {
     OC_FMUL, // FA = FB * FC
     OC_FDIV, // FA = FB / FC
 
+    OC_JMP, // ip += offset
+    OC_JEQ, // if (RA == RB) ip += offset
+    OC_JNE, // if (RA != RB) ip += offset
+    OC_JLT, // if (RA < RB) ip += offset
+    OC_JLE, // if (RA <= RB) ip += offset
+    OC_JGT, // if (RA > RB) ip += offset
+    OC_JGE, // if (RA >= RB) ip += offset
+
   };
 
   using GPRegister = std::uint64_t;
@@ -56,7 +64,14 @@ export namespace Tona {
     {"fadd", OpCode::OC_FADD},
     {"fsub", OpCode::OC_FSUB},
     {"fmul", OpCode::OC_FMUL},
-    {"fdiv", OpCode::OC_FDIV}
+    {"fdiv", OpCode::OC_FDIV},
+    {"jmp", OpCode::OC_JMP},
+    {"jeq", OpCode::OC_JEQ},
+    {"jne", OpCode::OC_JNE},
+    {"jlt", OpCode::OC_JLT},
+    {"jle", OpCode::OC_JLE},
+    {"jgt", OpCode::OC_JGT},
+    {"jge", OpCode::OC_JGE}
   };
 
   OpCode find_opcode(std::string_view text) {

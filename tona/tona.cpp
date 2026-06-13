@@ -20,11 +20,18 @@ int main(int argc, char* argv[]) {
   Tona::VM vm;
   Tona::Assembler ass;
   auto is = ass.compile(R"(
-    load8 r1, 10
-    load8 r2, 20
-    add r3, r1, r2
-    printg r3
+    load8 r0, 10
+    load8 r1, 5
+    load8 r2, 1
+    load8 r3, 0
+
+  loop:
+    add r4, r0, r4
+    sub r1, r1, r2
+    jne r1, r3 loop
+    printg r4
     end
   )");
+
   vm.run(is.data());
 }

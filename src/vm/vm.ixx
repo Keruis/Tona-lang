@@ -31,7 +31,10 @@ export namespace Tona {
           &&v_mul, &&v_div,
           &&v_mod, &&v_fadd,
           &&v_fsub, &&v_fmul,
-          &&v_fdiv
+          &&v_fdiv, &&v_jmp,
+          &&v_jeq, &&v_jne,
+          &&v_jlt, &&v_jle,
+          &&v_jgt, &&v_jge
         };
 
         goto *labels[*i];
@@ -54,6 +57,17 @@ export namespace Tona {
         v_fmul:    goto *labels[bin_op<FPRegister, std::multiplies<>>(base, ++i)];
         v_fdiv:    goto *labels[bin_op<FPRegister, std::divides<>>(base, ++i)];
 
+        v_jmp: {
+          std::int32_t offset; 
+          store<std::int32_t>(offset, ++i);
+          goto *labels[*(i += offset)];
+        }
+        v_jeq:     goto *labels[branch<GPRegister, std::equal_to<>>(base, ++i)];
+        v_jne:     goto *labels[branch<GPRegister, std::not_equal_to<>>(base, ++i)];
+        v_jlt:     goto *labels[branch<GPRegister, std::less<>>(base, ++i)];
+        v_jle:     goto *labels[branch<GPRegister, std::less_equal<>>(base, ++i)];
+        v_jgt:     goto *labels[branch<GPRegister, std::greater<>>(base, ++i)];
+        v_jge:     goto *labels[branch<GPRegister, std::greater_equal<>>(base, ++i)];
 
         v_print_g: {
           auto& A = reg<GPRegister>(base, *++i);
@@ -90,12 +104,23 @@ export namespace Tona {
 
       template <typename Reg, typename Op>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t bin_op(const std::size_t base, const Instruction*& i) noexcept {
-        auto& A = reg<GPRegister>(base, *i);
-        auto& B = reg<GPRegister>(base, *++i);
-        auto& C = reg<GPRegister>(base, *++i);
+        auto& A = reg<Reg>(base, *i);
+        auto& B = reg<Reg>(base, *++i);
+        auto& C = reg<Reg>(base, *++i);
         A = Op{}(B, C);
         return *++i;
       }
+
+      template <typename Reg, typename Op>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t branch(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<Reg>(base, *i);
+        auto& B = reg<Reg>(base, *++i);
+        std::int32_t offset;
+        store<std::int32_t>(offset, ++i);
+        if (Op{}(A, B))
+          i += offset;
+        return *i;
+      } 
 
     private:
       template <typename T>
