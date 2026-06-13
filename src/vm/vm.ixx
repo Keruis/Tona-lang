@@ -5,28 +5,28 @@ import std;
 import tona.config;
 import tona.byte;
 import tona.opcode;
-import tona.chunk;
 
 export namespace Tona {
 
   class VM {
     public:
-      VM() {
-        gp_regs = new GPRegister[TVM_MAX_REG_SIZE];
-        fp_regs = new FPRegister[TVM_MAX_REG_SIZE];
-      }
-      ~VM() {
-        delete[] gp_regs;
-        delete[] fp_regs;
-      }
+      VM()
+      : gp_regs(std::make_unique<GPRegister[]>(TVM_MAX_REG_SIZE)),
+        fp_regs(std::make_unique<FPRegister[]>(TVM_MAX_REG_SIZE))
+      {}
+      ~VM() {}
 
       void run(const Instruction* is) {
         const auto* i = is;
         std::size_t base = 0;
 
         constexpr void* labels[] = {
-          &&v_move, &&v_fmove,
-          &&v_load, &&v_fload, 
+          &&v_end, &&v_print_g,
+          &&v_print_f, &&v_move, 
+          &&v_fmove,
+          &&v_load8, &&v_load16,
+          &&v_load32,&&v_load, 
+          &&v_fload32, &&v_fload,
           &&v_add, &&v_sub,
           &&v_mul, &&v_div,
           &&v_mod, &&v_fadd,
@@ -34,114 +34,76 @@ export namespace Tona {
           &&v_fdiv
         };
 
-        goto *labels[cast_u8(*i)];
+        goto *labels[*i];
 
-        v_move: {
+        v_move:    goto *labels[move_op<GPRegister>(base, ++i)];
+        v_fmove:   goto *labels[move_op<FPRegister>(base, ++i)];
+        v_load8:   goto *labels[load_op<GPRegister, std::uint8_t>(base, ++i)];
+        v_load16:  goto *labels[load_op<GPRegister, std::uint16_t>(base, ++i)];
+        v_load32:  goto *labels[load_op<GPRegister, std::uint32_t>(base, ++i)];
+        v_load:    goto *labels[load_op<GPRegister, std::uint64_t>(base, ++i)];
+        v_fload32: goto *labels[load_op<FPRegister, float>(base, ++i)];
+        v_fload:   goto *labels[load_op<FPRegister, double>(base, ++i)];
+        v_add:     goto *labels[bin_op<GPRegister, std::plus<>>(base, ++i)];
+        v_sub:     goto *labels[bin_op<GPRegister, std::minus<>>(base, ++i)];
+        v_mul:     goto *labels[bin_op<GPRegister, std::multiplies<>>(base, ++i)];
+        v_div:     goto *labels[bin_op<GPRegister, std::divides<>>(base, ++i)];
+        v_mod:     goto *labels[bin_op<GPRegister, std::modulus<>>(base, ++i)];
+        v_fadd:    goto *labels[bin_op<FPRegister, std::plus<>>(base, ++i)];
+        v_fsub:    goto *labels[bin_op<FPRegister, std::minus<>>(base, ++i)];
+        v_fmul:    goto *labels[bin_op<FPRegister, std::multiplies<>>(base, ++i)];
+        v_fdiv:    goto *labels[bin_op<FPRegister, std::divides<>>(base, ++i)];
+
+
+        v_print_g: {
           auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          A = B;
-          goto *labels[cast_u8(*++i)];
+          std::println("gpreg{}: {}", base + cast_u8(*i),  A);
+          goto *labels[*++i];
         }
 
-        v_fmove: {
+        v_print_f: {
           auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          A = B;
-          goto *labels[cast_u8(*++i)];
+          std::println("fpreg{}: {}", base + cast_u8(*i),  A);
+          goto *labels[*++i];
         }
 
-        v_load: {
-          auto& A = reg<GPRegister>(base, *++i);
-          store<std::uint64_t>(A, ++i);
-          goto *labels[cast_u8(*++i)];
-        }
+        v_end:
+          std::println("end");
+          return;
+      }
 
-        v_fload: {
-          auto& A = reg<FPRegister>(base, *++i);
-          store<double>(A, ++i);
-          goto *labels[cast_u8(*++i)];
-        }
+    private:
+      template <typename Reg, typename T>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t load_op(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<Reg>(base, *i);
+        store<T>(A, ++i);
+        return *i;
+      }
 
-        v_add: {
-          auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          auto& C = reg<GPRegister>(base, *++i);
-          A = B + C;
-          goto *labels[cast_u8(*++i)];
-        }
+      template <typename Reg>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t move_op(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<Reg>(base, *i);
+        auto& B = reg<Reg>(base, *++i);
+        A = B;
+        return *++i;
+      }
 
-        v_sub: {
-          auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          auto& C = reg<GPRegister>(base, *++i);
-          A = B - C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_mul: {
-          auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          auto& C = reg<GPRegister>(base, *++i);
-          A = B * C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_div: {
-          auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          auto& C = reg<GPRegister>(base, *++i);
-          A = B / C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_mod: {
-          auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          auto& C = reg<GPRegister>(base, *++i);
-          A = B % C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_fadd: {
-          auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          auto& C = reg<FPRegister>(base, *++i);
-          A = B + C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_fsub: {
-          auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          auto& C = reg<FPRegister>(base, *++i);
-          A = B - C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_fmul: {
-          auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          auto& C = reg<FPRegister>(base, *++i);
-          A = B * C;
-          goto *labels[cast_u8(*++i)];
-        }
-
-        v_fdiv: {
-          auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          auto& C = reg<FPRegister>(base, *++i);
-          A = B / C;
-          goto *labels[cast_u8(*++i)];
-        }
+      template <typename Reg, typename Op>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t bin_op(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<GPRegister>(base, *i);
+        auto& B = reg<GPRegister>(base, *++i);
+        auto& C = reg<GPRegister>(base, *++i);
+        A = Op{}(B, C);
+        return *++i;
       }
 
     private:
       template <typename T>
       [[nodiscard]] [[gnu::always_inline]] inline T& reg(const std::size_t base, const Instruction i) noexcept {
         if constexpr (std::is_same_v<T, FPRegister>)
-          return fp_regs[base + cast_u8(i)];
+          return fp_regs[base + i];
         else if constexpr (std::is_same_v<T, GPRegister>)
-          return gp_regs[base + cast_u8(i)];
+          return gp_regs[base + i];
         else static_assert(false, "unkown register");
       }
 
@@ -153,8 +115,8 @@ export namespace Tona {
       }
 
     private:
-      GPRegister* gp_regs;
-      FPRegister* fp_regs;
+      std::unique_ptr<GPRegister[]> gp_regs;
+      std::unique_ptr<FPRegister[]> fp_regs;
   };
 
 }
