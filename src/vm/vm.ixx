@@ -12,7 +12,8 @@ export namespace Tona {
     public:
       VM()
       : gp_regs(std::make_unique<GPRegister[]>(TVM_MAX_REG_SIZE)),
-        fp_regs(std::make_unique<FPRegister[]>(TVM_MAX_REG_SIZE))
+        fp_regs(std::make_unique<FPRegister[]>(TVM_MAX_REG_SIZE)),
+        call_stack(std::make_unique<CallFrame[]>(TVM_MAX_CALL_FRAME_SIZE))
       {}
       ~VM() {}
 
@@ -31,10 +32,15 @@ export namespace Tona {
           &&v_mul, &&v_div,
           &&v_mod, &&v_fadd,
           &&v_fsub, &&v_fmul,
-          &&v_fdiv, &&v_jmp,
+          &&v_fdiv, &&v_itof,
+          &&v_ftoi, &&v_jmp,
           &&v_jeq, &&v_jne,
           &&v_jlt, &&v_jle,
-          &&v_jgt, &&v_jge
+          &&v_jgt, &&v_jge,
+          &&v_fjeq, &&v_fjne,
+          &&v_fjlt, &&v_fjle,
+          &&v_fjgt, &&v_fjge,
+          &&v_call, &&v_ret
         };
 
         goto *labels[*i];
@@ -57,6 +63,20 @@ export namespace Tona {
         v_fmul:    goto *labels[bin_op<FPRegister, std::multiplies<>>(base, ++i)];
         v_fdiv:    goto *labels[bin_op<FPRegister, std::divides<>>(base, ++i)];
 
+        v_itof: {
+          const auto& A = reg<GPRegister>(base, *++i);
+          auto& B = reg<FPRegister>(base, *++i);
+          B = static_cast<FPRegister>(A);
+          goto *labels[*++i];
+        }
+
+        v_ftoi: {
+          const auto& A = reg<FPRegister>(base, *++i);
+          auto& B = reg<GPRegister>(base, *++i);
+          B = static_cast<GPRegister>(A);
+          goto *labels[*++i];
+        }
+
         v_jmp: {
           std::int32_t offset; 
           store<std::int32_t>(offset, ++i);
@@ -68,6 +88,33 @@ export namespace Tona {
         v_jle:     goto *labels[branch<GPRegister, std::less_equal<>>(base, ++i)];
         v_jgt:     goto *labels[branch<GPRegister, std::greater<>>(base, ++i)];
         v_jge:     goto *labels[branch<GPRegister, std::greater_equal<>>(base, ++i)];
+        v_fjeq:    goto *labels[branch<FPRegister, std::equal_to<>>(base, ++i)];
+        v_fjne:    goto *labels[branch<FPRegister, std::not_equal_to<>>(base, ++i)];
+        v_fjlt:    goto *labels[branch<FPRegister, std::less<>>(base, ++i)];
+        v_fjle:    goto *labels[branch<FPRegister, std::less_equal<>>(base, ++i)];
+        v_fjgt:    goto *labels[branch<FPRegister, std::greater<>>(base, ++i)];
+        v_fjge:    goto *labels[branch<FPRegister, std::greater_equal<>>(base, ++i)];
+
+        v_call: {
+          std::int32_t offset; 
+          store<std::int32_t>(offset, ++i);
+          std::uint8_t shift = *i++;
+          call_stack[frame_idx++] = CallFrame{
+            .ret_addr = i,
+            .base = base
+          };
+          base += shift;
+          goto *labels[*(i += offset)];
+        }
+
+        v_ret: {
+          if (frame_idx == 0)
+            goto v_end;
+          const auto& frame = call_stack[--frame_idx];
+          base = frame.base;
+          i = frame.ret_addr;
+          goto *labels[*i];
+        }
 
         v_print_g: {
           auto& A = reg<GPRegister>(base, *++i);
@@ -97,7 +144,7 @@ export namespace Tona {
       template <typename Reg>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t move_op(const std::size_t base, const Instruction*& i) noexcept {
         auto& A = reg<Reg>(base, *i);
-        auto& B = reg<Reg>(base, *++i);
+        const auto& B = reg<Reg>(base, *++i);
         A = B;
         return *++i;
       }
@@ -105,16 +152,16 @@ export namespace Tona {
       template <typename Reg, typename Op>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t bin_op(const std::size_t base, const Instruction*& i) noexcept {
         auto& A = reg<Reg>(base, *i);
-        auto& B = reg<Reg>(base, *++i);
-        auto& C = reg<Reg>(base, *++i);
+        const auto& B = reg<Reg>(base, *++i);
+        const auto& C = reg<Reg>(base, *++i);
         A = Op{}(B, C);
         return *++i;
       }
 
       template <typename Reg, typename Op>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t branch(const std::size_t base, const Instruction*& i) noexcept {
-        auto& A = reg<Reg>(base, *i);
-        auto& B = reg<Reg>(base, *++i);
+        const auto& A = reg<Reg>(base, *i);
+        const auto& B = reg<Reg>(base, *++i);
         std::int32_t offset;
         store<std::int32_t>(offset, ++i);
         if (Op{}(A, B))
@@ -142,6 +189,8 @@ export namespace Tona {
     private:
       std::unique_ptr<GPRegister[]> gp_regs;
       std::unique_ptr<FPRegister[]> fp_regs;
+      std::unique_ptr<CallFrame[]> call_stack;
+      std::size_t frame_idx = 0;
   };
 
 }

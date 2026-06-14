@@ -28,6 +28,9 @@ export namespace Tona {
     OC_FMUL, // FA = FB * FC
     OC_FDIV, // FA = FB / FC
 
+    OC_ITOF, // FB = RA
+    OC_FTOI, // RB = FA
+
     OC_JMP, // ip += offset
     OC_JEQ, // if (RA == RB) ip += offset
     OC_JNE, // if (RA != RB) ip += offset
@@ -35,13 +38,26 @@ export namespace Tona {
     OC_JLE, // if (RA <= RB) ip += offset
     OC_JGT, // if (RA > RB) ip += offset
     OC_JGE, // if (RA >= RB) ip += offset
+    OC_FJEQ, // if (FA == FB) ip += offset
+    OC_FJNE, // if (FA != FB) ip += offset
+    OC_FJLT, // if (FA < FB) ip += offset
+    OC_FJLE, // if (FA <= FB) ip += offset
+    OC_FJGT, // if (FA > FB) ip += offset
+    OC_FJGE, // if (FA >= FB) ip += offset
 
+    OC_CALL, // ip += offset base += shift
+    OC_RET // ip = ret_addr base = ret_base
   };
 
   using GPRegister = std::uint64_t;
   using FPRegister = double;
 
   using Instruction = std::uint8_t;
+
+  struct CallFrame {
+    const Instruction* ret_addr;
+    std::size_t base;
+  };
 
   const std::flat_map<std::string_view, OpCode> opcodes {
     {"end", OpCode::OC_END},
@@ -65,13 +81,26 @@ export namespace Tona {
     {"fsub", OpCode::OC_FSUB},
     {"fmul", OpCode::OC_FMUL},
     {"fdiv", OpCode::OC_FDIV},
+
+    {"itof", OpCode::OC_ITOF},
+    {"ftoi", OpCode::OC_FTOI},
+
     {"jmp", OpCode::OC_JMP},
     {"jeq", OpCode::OC_JEQ},
     {"jne", OpCode::OC_JNE},
     {"jlt", OpCode::OC_JLT},
     {"jle", OpCode::OC_JLE},
     {"jgt", OpCode::OC_JGT},
-    {"jge", OpCode::OC_JGE}
+    {"jge", OpCode::OC_JGE},
+    {"fjeq", OpCode::OC_FJEQ},
+    {"fjne", OpCode::OC_FJNE},
+    {"fjlt", OpCode::OC_FJLT},
+    {"fjle", OpCode::OC_FJLE},
+    {"fjgt", OpCode::OC_FJGT},
+    {"fjge", OpCode::OC_FJGE},
+
+    {"call", OpCode::OC_CALL},
+    {"ret", OpCode::OC_RET}
   };
 
   OpCode find_opcode(std::string_view text) {
