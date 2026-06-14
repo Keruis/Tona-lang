@@ -46,7 +46,22 @@ export namespace Tona {
     OC_FJGE, // if (FA >= FB) ip += offset
 
     OC_CALL, // ip += offset base += shift
-    OC_RET // ip = ret_addr base = ret_base
+    OC_RET, // ip = ret_addr base = ret_base
+
+    OC_LDM8, // RA = mem[RB]
+    OC_LDM16, // RA = mem[RB]
+    OC_LDM32, // RA = mem[RB]
+    OC_LDM, // RA = mem[RB]
+    OC_FLDM32, // FA = mem[RB]
+    OC_FLDM, // FA = mem[RB]
+    OC_STM8, // mem[RB] = RA
+    OC_STM16, // mem[RB] = RA
+    OC_STM32, // mem[RB] = RA
+    OC_STM, // mem[RB] = RA
+    OC_FSTM32, // mem[RB] = FA
+    OC_FSTM, // mem[RB] = FA
+
+    OC_GROW, // RA = malloc(RB)
   };
 
   using GPRegister = std::uint64_t;
@@ -99,8 +114,23 @@ export namespace Tona {
     {"fjgt", OpCode::OC_FJGT},
     {"fjge", OpCode::OC_FJGE},
 
+    {"ldm8", OpCode::OC_LDM8},
+    {"ldm16", OpCode::OC_LDM16},
+    {"ldm32", OpCode::OC_LDM32},
+    {"ldm", OpCode::OC_LDM},
+    {"fldm32", OpCode::OC_FLDM32},
+    {"fldm", OpCode::OC_FLDM},
+    {"stm8", OpCode::OC_STM8},
+    {"stm16", OpCode::OC_STM16},
+    {"stm32", OpCode::OC_STM32},
+    {"stm", OpCode::OC_STM},
+    {"fstm32", OpCode::OC_FSTM32},
+    {"fstm", OpCode::OC_FSTM},
+
     {"call", OpCode::OC_CALL},
-    {"ret", OpCode::OC_RET}
+    {"ret", OpCode::OC_RET},
+
+    {"grow", OpCode::OC_GROW}
   };
 
   OpCode find_opcode(std::string_view text) {

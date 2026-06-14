@@ -1,3 +1,8 @@
+module;
+#include <cassert>
+#include <cstddef>
+#include <cstdlib>
+#include <memory>
 export module tona.vm;
 
 import std;
@@ -10,10 +15,12 @@ export namespace Tona {
 
   class VM {
     public:
-      VM()
+      VM(std::unique_ptr<std::vector<std::uint8_t>> const_mem)
       : gp_regs(std::make_unique<GPRegister[]>(TVM_MAX_REG_SIZE)),
         fp_regs(std::make_unique<FPRegister[]>(TVM_MAX_REG_SIZE)),
-        call_stack(std::make_unique<CallFrame[]>(TVM_MAX_CALL_FRAME_SIZE))
+        call_stack(std::make_unique<CallFrame[]>(TVM_MAX_CALL_FRAME_SIZE)),
+        mem(std::move(const_mem)),
+        boundary(const_mem->size())
       {}
       ~VM() {}
 
@@ -40,7 +47,14 @@ export namespace Tona {
           &&v_fjeq, &&v_fjne,
           &&v_fjlt, &&v_fjle,
           &&v_fjgt, &&v_fjge,
-          &&v_call, &&v_ret
+          &&v_call, &&v_ret,
+          &&v_ldm8, &&v_ldm16,
+          &&v_ldm32, &&v_ldm,
+          &&v_fldm32, &&v_fldm,
+          &&v_stm8, &&v_stm16,
+          &&v_stm32, &&v_stm,
+          &&v_fstm32, &&v_fstm,
+          &&v_grow, 
         };
 
         goto *labels[*i];
@@ -94,6 +108,29 @@ export namespace Tona {
         v_fjle:    goto *labels[branch<FPRegister, std::less_equal<>>(base, ++i)];
         v_fjgt:    goto *labels[branch<FPRegister, std::greater<>>(base, ++i)];
         v_fjge:    goto *labels[branch<FPRegister, std::greater_equal<>>(base, ++i)];
+
+        v_ldm8:    goto *labels[load_mem<GPRegister, std::uint8_t>(base, ++i)];
+        v_ldm16:   goto *labels[load_mem<GPRegister, std::uint16_t>(base, ++i)];
+        v_ldm32:   goto *labels[load_mem<GPRegister, std::uint32_t>(base, ++i)];
+        v_ldm:     goto *labels[load_mem<GPRegister, std::uint64_t>(base, ++i)];
+        v_fldm32:  goto *labels[load_mem<FPRegister, float>(base, ++i)];
+        v_fldm:    goto *labels[load_mem<FPRegister, double>(base, ++i)];
+        v_stm8:    goto *labels[store_mem<GPRegister, std::uint8_t>(base, ++i)];
+        v_stm16:   goto *labels[store_mem<GPRegister, std::uint16_t>(base, ++i)];
+        v_stm32:   goto *labels[store_mem<GPRegister, std::uint32_t>(base, ++i)];
+        v_stm:     goto *labels[store_mem<GPRegister, std::uint64_t>(base, ++i)];
+        v_fstm32:  goto *labels[store_mem<FPRegister, float>(base, ++i)];
+        v_fstm:    goto *labels[store_mem<FPRegister, double>(base, ++i)];
+
+        v_grow: {
+          auto& RA = reg<GPRegister>(base, *++i);
+          const auto& RB = reg<GPRegister>(base, *++i);
+
+          std::size_t old_size = mem->size();
+          mem->resize(old_size + RB);
+          RA = old_size;
+          goto *labels[*++i];
+        }
 
         v_call: {
           std::int32_t offset; 
@@ -167,7 +204,23 @@ export namespace Tona {
         if (Op{}(A, B))
           i += offset;
         return *i;
-      } 
+      }
+
+      template <typename Reg, typename T>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t load_mem(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<Reg>(base, *i);
+        const auto& B = reg<GPRegister>(base, *++i);
+        A = read_mem<T>(B);
+        return *++i;
+      }
+
+      template <typename Reg, typename T>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t store_mem(const std::size_t base, const Instruction*& i) noexcept {
+        const auto& A = reg<Reg>(base, *i);
+        const auto& B = reg<GPRegister>(base, *++i);
+        write_mem(B, A);
+        return *++i;
+      }
 
     private:
       template <typename T>
@@ -186,11 +239,40 @@ export namespace Tona {
         src += sizeof(T);
       }
 
+      template <typename T>
+      [[gnu::always_inline]] inline T read_mem(std::size_t addr) const noexcept {
+        if (addr + sizeof(T) > mem->size()) [[unlikely]] {
+          std::println("error: Out of bounds read 0x{:X}", addr);
+          std::exit(EXIT_FAILURE);
+        }
+
+        T val;
+        std::memcpy(&val, mem->data() + addr, sizeof(T));
+        return val; 
+      }
+
+      template <typename T>
+      [[gnu::always_inline]] inline void write_mem(std::size_t addr, const T& val) noexcept {
+        if (addr < boundary) [[unlikely]] {
+          std::println("error: Write to Read-Only memory 0x{:X}", addr);
+          std::exit(EXIT_FAILURE);
+        }
+
+        if (addr + sizeof(T) > mem->size()) [[unlikely]] {
+          std::println("error: Out of bounds write 0x{:X}", addr);
+          std::exit(EXIT_FAILURE);
+        }
+
+        std::memcpy(mem->data() + addr, &val, sizeof(T));
+      }
+
     private:
+      std::unique_ptr<std::vector<std::uint8_t>> mem;
       std::unique_ptr<GPRegister[]> gp_regs;
       std::unique_ptr<FPRegister[]> fp_regs;
       std::unique_ptr<CallFrame[]> call_stack;
       std::size_t frame_idx = 0;
+      std::size_t boundary = 0;
   };
 
 }

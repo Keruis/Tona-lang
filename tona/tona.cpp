@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 
   Tona::VM vm;
   Tona::Assembler ass;
-  auto is = ass.compile(R"(
+  auto i = ass.compile(R"(
     load8 r0, 10
     load8 r1, 5
     load8 r2, 1
@@ -33,5 +33,7 @@ int main(int argc, char* argv[]) {
     end
   )");
 
-  vm.run(is.data());
+  vm.run(i.data());
+
+  
 }
