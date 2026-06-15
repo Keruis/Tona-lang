@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     sub r1, r1, r2
     jne r1, r3 loop
     printg r4
-    end
+    ret
   )");
 
   vm.run(i.data());

@@ -10,8 +10,11 @@ export namespace Tona {
     OC_MOVE, // RA = RB
     OC_FMOVE, // FA = FB
     OC_LOAD8, // RA = Imm8
-    OC_LOAD16, // RA = Imm8
+    OC_LOAD16, // RA = Imm16
     OC_LOAD32, // RA = Imm32
+    OC_LOAD8S, // RA = Imm8
+    OC_LOAD16S, // RA = Imm16
+    OC_LOAD32S, // RA = Imm32
     OC_LOAD, // RA = Imm64
     OC_FLOAD32, // FA = F32
     OC_FLOAD, // FA = F64
@@ -37,9 +40,10 @@ export namespace Tona {
     OC_FSQRT, // FA = ----
     //              _/ FB
 
-    OC_ITOF, // FB = RA
-    OC_UTOF, // FB = RA
-    OC_FTOI, // RB = FA
+    OC_ITOF, // FA = RB
+    OC_UTOF, // FA = RB
+    OC_FTOI, // RA = FB
+    OC_FTOU, // RA = FB
 
     OC_JMP, // ip += offset
     OC_JMPO, // ip += RA
@@ -60,14 +64,18 @@ export namespace Tona {
     OC_FJL, // if (FA < FB) ip += offset
     OC_FJLE, // if (FA <= FB) ip += offset
 
-    OC_AND, // RC = RA & RB
-    OC_OR, // RC = RA | RB
-    OC_XOR, // RC = RA ^ RB
-    OC_NOT, // RB = ~RA
+    OC_AND, // RA = RB & RC
+    OC_OR, // RA = RB | RC
+    OC_XOR, // RA = RB ^ RC
+    OC_NOT, // RA = ~RB
 
-    OC_SHL, // RC = RA << RB
-    OC_SHR, // RC = RA >>(L) RB
-    OC_SAR, // RC = RA >>(A) RB
+    OC_SHL, // RA = RB << RC
+    OC_SHR, // RA = RB >>(L) RC
+    OC_SAR, // RA = RB >>(A) RC
+
+    OC_SEXT8, // RA = RB
+    OC_SEXT16, // RA = RB
+    OC_SEXT32, // RA = RB
 
     OC_CALL, // ip += offset base += shift
     OC_RET, // ip = ret_addr base = ret_base
@@ -75,15 +83,18 @@ export namespace Tona {
     OC_LDM8, // RA = mem[RB]
     OC_LDM16, // RA = mem[RB]
     OC_LDM32, // RA = mem[RB]
+    OC_LDM8S, // RA = mem[RB]
+    OC_LDM16S, // RA = mem[RB]
+    OC_LDM32S, // RA = mem[RB]
     OC_LDM, // RA = mem[RB]
     OC_FLDM32, // FA = mem[RB]
     OC_FLDM, // FA = mem[RB]
-    OC_STM8, // mem[RB] = RA
-    OC_STM16, // mem[RB] = RA
-    OC_STM32, // mem[RB] = RA
-    OC_STM, // mem[RB] = RA
-    OC_FSTM32, // mem[RB] = FA
-    OC_FSTM, // mem[RB] = FA
+    OC_STM8, // mem[RA] = RB
+    OC_STM16, // mem[RA] = RB
+    OC_STM32, // mem[RA] = RB
+    OC_STM, // mem[RA] = RB
+    OC_FSTM32, // mem[RA] = FB
+    OC_FSTM, // mem[RA] = FB
 
     //OC_GROW, // RA = malloc(RB)
     OC_UNKOWN = std::numeric_limits<std::uint8_t>::max(),
@@ -107,6 +118,9 @@ export namespace Tona {
     {"load8", OpCode::OC_LOAD8},
     {"load16", OpCode::OC_LOAD16},
     {"load32", OpCode::OC_LOAD32},
+    {"iload8", OpCode::OC_LOAD8S},
+    {"iload16", OpCode::OC_LOAD16S},
+    {"iload32", OpCode::OC_LOAD32S},
     {"load", OpCode::OC_LOAD},
     {"fload32", OpCode::OC_FLOAD32},
     {"fload", OpCode::OC_FLOAD},
@@ -122,6 +136,7 @@ export namespace Tona {
     {"mod", OpCode::OC_MOD},
     {"imod", OpCode::OC_MODS},
 
+    {"fneg", OpCode::OC_FNEG},
     {"fadd", OpCode::OC_FADD},
     {"fsub", OpCode::OC_FSUB},
     {"fmul", OpCode::OC_FMUL},
@@ -133,6 +148,7 @@ export namespace Tona {
     {"itof", OpCode::OC_ITOF},
     {"utof", OpCode::OC_UTOF},
     {"ftoi", OpCode::OC_FTOI},
+    {"ftou", OpCode::OC_FTOU},
 
     {"jmp", OpCode::OC_JMP},
     {"jmpo", OpCode::OC_JMPO},
@@ -162,12 +178,19 @@ export namespace Tona {
     {"shr", OpCode::OC_SHR},
     {"sar", OpCode::OC_SAR},
 
+    {"sext8", OpCode::OC_SEXT8},
+    {"sext16", OpCode::OC_SEXT16},
+    {"sext32", OpCode::OC_SEXT32},
+
     {"call", OpCode::OC_CALL},
     {"ret", OpCode::OC_RET},
 
     {"ldm8", OpCode::OC_LDM8},
     {"ldm16", OpCode::OC_LDM16},
     {"ldm32", OpCode::OC_LDM32},
+    {"ildm8", OpCode::OC_LDM8S},
+    {"ildm16", OpCode::OC_LDM16S},
+    {"ildm32", OpCode::OC_LDM32S},
     {"ldm", OpCode::OC_LDM},
     {"fldm32", OpCode::OC_FLDM32},
     {"fldm", OpCode::OC_FLDM},

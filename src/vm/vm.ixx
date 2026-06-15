@@ -1,3 +1,5 @@
+module;
+#include <cstddef>
 export module tona.vm;
 
 import std;
@@ -28,7 +30,9 @@ export namespace Tona {
           
           &&v_move, &&v_fmove,
           &&v_load8, &&v_load16,
-          &&v_load32,&&v_load, 
+          &&v_load32, &&v_iload8,
+          &&v_iload16, &&v_iload32,
+          &&v_load,
           &&v_fload32, &&v_fload,
           &&v_inc, &&v_dec,
           &&v_neg, &&v_add, 
@@ -41,7 +45,7 @@ export namespace Tona {
           &&v_fmin, &&v_fsqrt,
 
           &&v_itof, &&v_utof,
-          &&v_ftoi,
+          &&v_ftoi, &&v_ftou,
 
           &&v_jmp, &&v_jmpo,
           &&v_je, &&v_jne,
@@ -59,10 +63,15 @@ export namespace Tona {
           &&v_shl, &&v_shr,
           &&v_sar,
 
+          &&v_sext8, &&v_sext16,
+          &&v_sext32,
+
           &&v_call, &&v_ret,
 
           &&v_ldm8, &&v_ldm16,
-          &&v_ldm32, &&v_ldm,
+          &&v_ldm32, &&v_ildm8,
+          &&v_ildm16, &&v_ildm32,
+          &&v_ldm,
           &&v_fldm32, &&v_fldm,
           &&v_stm8, &&v_stm16,
           &&v_stm32, &&v_stm,
@@ -77,6 +86,9 @@ export namespace Tona {
         v_load8:   goto *labels[load_op<GPRegister, std::uint8_t>(base, ++i)];
         v_load16:  goto *labels[load_op<GPRegister, std::uint16_t>(base, ++i)];
         v_load32:  goto *labels[load_op<GPRegister, std::uint32_t>(base, ++i)];
+        v_iload8:  goto *labels[load_op<GPRegister, std::int8_t>(base, ++i)];
+        v_iload16: goto *labels[load_op<GPRegister, std::int16_t>(base, ++i)];
+        v_iload32: goto *labels[load_op<GPRegister, std::int32_t>(base, ++i)];
         v_load:    goto *labels[load_op<GPRegister, std::uint64_t>(base, ++i)];
         v_fload32: goto *labels[load_op<FPRegister, float>(base, ++i)];
         v_fload:   goto *labels[load_op<FPRegister, double>(base, ++i)];
@@ -106,40 +118,17 @@ export namespace Tona {
         v_shr:     goto *labels[bin_op<GPRegister, bit_shift_right>(base, ++i)];
         v_sar:     goto *labels[bin_op<GPRegister, bit_shift_right, std::int64_t>(base, ++i)];
 
-        v_inc: {
-          auto& A = reg<GPRegister>(base, *++i);
-          const auto& B = reg<GPRegister>(base, *++i);
-          A = B + 1;
-          goto *labels[*++i];
-        }
+        v_sext8:   goto *labels[un_op<GPRegister, sign_extend_8>(base, ++i)];
+        v_sext16:  goto *labels[un_op<GPRegister, sign_extend_16>(base, ++i)];
+        v_sext32:  goto *labels[un_op<GPRegister, sign_extend_32>(base, ++i)];
 
-        v_dec: {
-          auto& A = reg<GPRegister>(base, *++i);
-          const auto& B = reg<GPRegister>(base, *++i);
-          A = B - 1;
-          goto *labels[*++i];
-        }
+        v_inc:     goto *labels[un_op<GPRegister, inc>(base, ++i)];
+        v_dec:     goto *labels[un_op<GPRegister, dec>(base, ++i)];
 
-        v_itof: {
-          const auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          B = static_cast<FPRegister>(static_cast<std::int64_t>(A));
-          goto *labels[*++i];
-        }
-
-        v_utof: {
-          const auto& A = reg<GPRegister>(base, *++i);
-          auto& B = reg<FPRegister>(base, *++i);
-          B = static_cast<FPRegister>(A);
-          goto *labels[*++i];
-        }
-
-        v_ftoi: {
-          const auto& A = reg<FPRegister>(base, *++i);
-          auto& B = reg<GPRegister>(base, *++i);
-          B = static_cast<GPRegister>(A);
-          goto *labels[*++i];
-        }
+        v_itof: goto *labels[tc_op<FPRegister, GPRegister, std::int64_t>(base, ++i)];
+        v_utof: goto *labels[tc_op<FPRegister, GPRegister>(base, ++i)];
+        v_ftoi: goto *labels[tc_op<GPRegister, FPRegister, std::int64_t>(base, ++i)];
+        v_ftou: goto *labels[tc_op<GPRegister, FPRegister>(base, ++i)];
 
         v_jmp: {
           std::int32_t offset; 
@@ -170,6 +159,9 @@ export namespace Tona {
         v_ldm8:    goto *labels[load_mem<GPRegister, std::uint8_t>(base, ++i)];
         v_ldm16:   goto *labels[load_mem<GPRegister, std::uint16_t>(base, ++i)];
         v_ldm32:   goto *labels[load_mem<GPRegister, std::uint32_t>(base, ++i)];
+        v_ildm8:   goto *labels[load_mem<GPRegister, std::int8_t>(base, ++i)];
+        v_ildm16:  goto *labels[load_mem<GPRegister, std::int16_t>(base, ++i)];
+        v_ildm32:  goto *labels[load_mem<GPRegister, std::int32_t>(base, ++i)];
         v_ldm:     goto *labels[load_mem<GPRegister, std::uint64_t>(base, ++i)];
         v_fldm32:  goto *labels[load_mem<FPRegister, float>(base, ++i)];
         v_fldm:    goto *labels[load_mem<FPRegister, double>(base, ++i)];
@@ -278,9 +270,17 @@ export namespace Tona {
 
       template <typename Reg, typename T>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t store_mem(const std::size_t base, const Instruction*& i) noexcept {
-        const auto& A = reg<Reg>(base, *i);
-        const auto& B = reg<GPRegister>(base, *++i);
-        write_mem(B, A);
+        const auto& A = reg<GPRegister>(base, *i);
+        const auto& B = reg<Reg>(base, *++i);
+        write_mem(A, B);
+        return *++i;
+      }
+
+      template <typename DReg, typename SReg, typename T = DReg>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t tc_op(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<DReg>(base, *i);
+        const auto& B = reg<SReg>(base, *++i);
+        A = static_cast<DReg>(static_cast<T>(B));
         return *++i;
       }
 
@@ -334,12 +334,12 @@ export namespace Tona {
       }
 
     private:
+      std::size_t frame_idx = 0;
+      std::size_t boundary;
       std::unique_ptr<std::vector<std::uint8_t>> mem;
       std::unique_ptr<GPRegister[]> gp_regs;
       std::unique_ptr<FPRegister[]> fp_regs;
       std::unique_ptr<CallFrame[]> call_stack;
-      std::size_t frame_idx = 0;
-      std::size_t boundary = 0;
   };
 
 }

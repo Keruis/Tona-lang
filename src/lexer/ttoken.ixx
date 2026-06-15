@@ -130,11 +130,6 @@ export namespace Tona {
 
   constexpr std::size_t keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
 
-  struct Keyword {
-    std::string_view key;
-    TokenType type;
-  };
-
   const std::flat_map<std::string_view, TokenType> keywords {
     {"var", TokenType::T_KEYWORD_VAR},
     {"if", TokenType::T_KEYWORD_IF},
