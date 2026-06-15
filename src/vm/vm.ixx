@@ -1,8 +1,3 @@
-module;
-#include <cassert>
-#include <cstddef>
-#include <cstdlib>
-#include <memory>
 export module tona.vm;
 
 import std;
@@ -29,32 +24,50 @@ export namespace Tona {
         std::size_t base = 0;
 
         constexpr void* labels[] = {
-          &&v_end, &&v_print_g,
-          &&v_print_f, &&v_move, 
-          &&v_fmove,
+          &&v_print_g,&&v_print_f, 
+          
+          &&v_move, &&v_fmove,
           &&v_load8, &&v_load16,
           &&v_load32,&&v_load, 
           &&v_fload32, &&v_fload,
-          &&v_add, &&v_sub,
-          &&v_mul, &&v_div,
-          &&v_mod, &&v_fadd,
+          &&v_inc, &&v_dec,
+          &&v_neg, &&v_add, 
+          &&v_sub,&&v_mul, 
+          &&v_div, &&v_divs,
+          &&v_mod, &&v_mods,
+          &&v_fneg, &&v_fadd,
           &&v_fsub, &&v_fmul,
-          &&v_fdiv, &&v_itof,
-          &&v_ftoi, &&v_jmp,
-          &&v_jeq, &&v_jne,
-          &&v_jlt, &&v_jle,
-          &&v_jgt, &&v_jge,
-          &&v_fjeq, &&v_fjne,
-          &&v_fjlt, &&v_fjle,
-          &&v_fjgt, &&v_fjge,
+          &&v_fdiv, &&v_fmax, 
+          &&v_fmin, &&v_fsqrt,
+
+          &&v_itof, &&v_utof,
+          &&v_ftoi,
+
+          &&v_jmp, &&v_jmpo,
+          &&v_je, &&v_jne,
+          &&v_jg, &&v_jge,
+          &&v_jl, &&v_jle,
+          &&v_ja, &&v_jae,
+          &&v_jb, &&v_jbe,
+          &&v_fje, &&v_fjne,
+          &&v_fjg, &&v_fjge,
+          &&v_fjl, &&v_fjle,
+
+          &&v_and, &&v_or,
+          &&v_xor, &&v_not,
+
+          &&v_shl, &&v_shr,
+          &&v_sar,
+
           &&v_call, &&v_ret,
+
           &&v_ldm8, &&v_ldm16,
           &&v_ldm32, &&v_ldm,
           &&v_fldm32, &&v_fldm,
           &&v_stm8, &&v_stm16,
           &&v_stm32, &&v_stm,
-          &&v_fstm32, &&v_fstm,
-          &&v_grow, 
+          &&v_fstm32, &&v_fstm
+          //&&v_grow, 
         };
 
         goto *labels[*i];
@@ -71,13 +84,50 @@ export namespace Tona {
         v_sub:     goto *labels[bin_op<GPRegister, std::minus<>>(base, ++i)];
         v_mul:     goto *labels[bin_op<GPRegister, std::multiplies<>>(base, ++i)];
         v_div:     goto *labels[bin_op<GPRegister, std::divides<>>(base, ++i)];
+        v_divs:    goto *labels[bin_op<GPRegister, std::divides<>, std::int64_t>(base, ++i)];
         v_mod:     goto *labels[bin_op<GPRegister, std::modulus<>>(base, ++i)];
+        v_mods:    goto *labels[bin_op<GPRegister, std::modulus<>, std::int64_t>(base, ++i)];
         v_fadd:    goto *labels[bin_op<FPRegister, std::plus<>>(base, ++i)];
         v_fsub:    goto *labels[bin_op<FPRegister, std::minus<>>(base, ++i)];
         v_fmul:    goto *labels[bin_op<FPRegister, std::multiplies<>>(base, ++i)];
         v_fdiv:    goto *labels[bin_op<FPRegister, std::divides<>>(base, ++i)];
+        v_neg:     goto *labels[un_op<GPRegister, std::negate<>>(base, ++i)];
+        v_fneg:    goto *labels[un_op<FPRegister, std::negate<>>(base, ++i)];
+        v_fmax:    goto *labels[bin_op<FPRegister, maximum>(base, ++i)];
+        v_fmin:    goto *labels[bin_op<FPRegister, minimum>(base, ++i)];
+        v_fsqrt:   goto *labels[un_op<FPRegister, square_root>(base, ++i)];
+
+        v_and:     goto *labels[bin_op<GPRegister, std::bit_and<>>(base, ++i)];
+        v_or:      goto *labels[bin_op<GPRegister, std::bit_or<>>(base, ++i)];
+        v_xor:     goto *labels[bin_op<GPRegister, std::bit_xor<>>(base, ++i)];
+        v_not:     goto *labels[un_op<GPRegister, std::bit_not<>>(base, ++i)];
+
+        v_shl:     goto *labels[bin_op<GPRegister, bit_shift_left>(base, ++i)];
+        v_shr:     goto *labels[bin_op<GPRegister, bit_shift_right>(base, ++i)];
+        v_sar:     goto *labels[bin_op<GPRegister, bit_shift_right, std::int64_t>(base, ++i)];
+
+        v_inc: {
+          auto& A = reg<GPRegister>(base, *++i);
+          const auto& B = reg<GPRegister>(base, *++i);
+          A = B + 1;
+          goto *labels[*++i];
+        }
+
+        v_dec: {
+          auto& A = reg<GPRegister>(base, *++i);
+          const auto& B = reg<GPRegister>(base, *++i);
+          A = B - 1;
+          goto *labels[*++i];
+        }
 
         v_itof: {
+          const auto& A = reg<GPRegister>(base, *++i);
+          auto& B = reg<FPRegister>(base, *++i);
+          B = static_cast<FPRegister>(static_cast<std::int64_t>(A));
+          goto *labels[*++i];
+        }
+
+        v_utof: {
           const auto& A = reg<GPRegister>(base, *++i);
           auto& B = reg<FPRegister>(base, *++i);
           B = static_cast<FPRegister>(A);
@@ -96,17 +146,25 @@ export namespace Tona {
           store<std::int32_t>(offset, ++i);
           goto *labels[*(i += offset)];
         }
-        v_jeq:     goto *labels[branch<GPRegister, std::equal_to<>>(base, ++i)];
+        v_jmpo: {
+          const auto& A = reg<GPRegister>(base, *++i);
+          goto *labels[*(i += A)];
+        }
+        v_je:      goto *labels[branch<GPRegister, std::equal_to<>>(base, ++i)];
         v_jne:     goto *labels[branch<GPRegister, std::not_equal_to<>>(base, ++i)];
-        v_jlt:     goto *labels[branch<GPRegister, std::less<>>(base, ++i)];
+        v_jl:      goto *labels[branch<GPRegister, std::less<>>(base, ++i)];
         v_jle:     goto *labels[branch<GPRegister, std::less_equal<>>(base, ++i)];
-        v_jgt:     goto *labels[branch<GPRegister, std::greater<>>(base, ++i)];
+        v_jg:      goto *labels[branch<GPRegister, std::greater<>>(base, ++i)];
         v_jge:     goto *labels[branch<GPRegister, std::greater_equal<>>(base, ++i)];
-        v_fjeq:    goto *labels[branch<FPRegister, std::equal_to<>>(base, ++i)];
+        v_ja:      goto *labels[branch<GPRegister, std::greater_equal<>, std::int64_t>(base, ++i)];
+        v_jae:     goto *labels[branch<GPRegister, std::greater_equal<>, std::int64_t>(base, ++i)];
+        v_jb:      goto *labels[branch<GPRegister, std::greater_equal<>, std::int64_t>(base, ++i)];
+        v_jbe:     goto *labels[branch<GPRegister, std::greater_equal<>, std::int64_t>(base, ++i)];
+        v_fje:     goto *labels[branch<FPRegister, std::equal_to<>>(base, ++i)];
         v_fjne:    goto *labels[branch<FPRegister, std::not_equal_to<>>(base, ++i)];
-        v_fjlt:    goto *labels[branch<FPRegister, std::less<>>(base, ++i)];
+        v_fjl:     goto *labels[branch<FPRegister, std::less<>>(base, ++i)];
         v_fjle:    goto *labels[branch<FPRegister, std::less_equal<>>(base, ++i)];
-        v_fjgt:    goto *labels[branch<FPRegister, std::greater<>>(base, ++i)];
+        v_fjg:     goto *labels[branch<FPRegister, std::greater<>>(base, ++i)];
         v_fjge:    goto *labels[branch<FPRegister, std::greater_equal<>>(base, ++i)];
 
         v_ldm8:    goto *labels[load_mem<GPRegister, std::uint8_t>(base, ++i)];
@@ -146,7 +204,7 @@ export namespace Tona {
 
         v_ret: {
           if (frame_idx == 0)
-            goto v_end;
+            return;
           const auto& frame = call_stack[--frame_idx];
           base = frame.base;
           i = frame.ret_addr;
@@ -164,10 +222,6 @@ export namespace Tona {
           std::println("fpreg{}: {}", base + cast_u8(*i),  A);
           goto *labels[*++i];
         }
-
-        v_end:
-          std::println("end");
-          return;
       }
 
     private:
@@ -187,21 +241,29 @@ export namespace Tona {
       }
 
       template <typename Reg, typename Op>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t un_op(const std::size_t base, const Instruction*& i) noexcept {
+        auto& A = reg<Reg>(base, *i);
+        const auto& B = reg<Reg>(base, *++i);
+        A = Op{}(B);
+        return *++i;
+      }
+
+      template <typename Reg, typename Op, typename T = Reg>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t bin_op(const std::size_t base, const Instruction*& i) noexcept {
         auto& A = reg<Reg>(base, *i);
         const auto& B = reg<Reg>(base, *++i);
         const auto& C = reg<Reg>(base, *++i);
-        A = Op{}(B, C);
+        A = Op{}(static_cast<T>(B), static_cast<T>(C));
         return *++i;
       }
 
-      template <typename Reg, typename Op>
+      template <typename Reg, typename Op, typename T = Reg>
       [[nodiscard]] [[gnu::always_inline]] inline std::uint8_t branch(const std::size_t base, const Instruction*& i) noexcept {
         const auto& A = reg<Reg>(base, *i);
         const auto& B = reg<Reg>(base, *++i);
         std::int32_t offset;
         store<std::int32_t>(offset, ++i);
-        if (Op{}(A, B))
+        if (Op{}(static_cast<T>(A), static_cast<T>(B)))
           i += offset;
         return *i;
       }
@@ -235,7 +297,9 @@ export namespace Tona {
       template <typename T>
         requires (std::is_arithmetic_v<T>)
       [[gnu::always_inline]] inline void store(auto& dst, const Instruction*& src) noexcept {
-        std::memcpy(&dst, src, sizeof(T));
+        T val;
+        std::memcpy(&val, src, sizeof(T));
+        dst = val;
         src += sizeof(T);
       }
 
@@ -243,7 +307,8 @@ export namespace Tona {
       [[gnu::always_inline]] inline T read_mem(std::size_t addr) const noexcept {
         if (addr + sizeof(T) > mem->size()) [[unlikely]] {
           std::println("error: Out of bounds read 0x{:X}", addr);
-          std::exit(EXIT_FAILURE);
+          std::exit(1);
+          // test
         }
 
         T val;
@@ -255,12 +320,14 @@ export namespace Tona {
       [[gnu::always_inline]] inline void write_mem(std::size_t addr, const T& val) noexcept {
         if (addr < boundary) [[unlikely]] {
           std::println("error: Write to Read-Only memory 0x{:X}", addr);
-          std::exit(EXIT_FAILURE);
+          std::exit(1);
+          // test
         }
 
         if (addr + sizeof(T) > mem->size()) [[unlikely]] {
           std::println("error: Out of bounds write 0x{:X}", addr);
-          std::exit(EXIT_FAILURE);
+          std::exit(1);
+          // test
         }
 
         std::memcpy(mem->data() + addr, &val, sizeof(T));

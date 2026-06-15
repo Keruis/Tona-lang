@@ -16,8 +16,8 @@ int main(int argc, char* argv[]) {
 
   // Tona::Elysia driver(*output_stream);
   // return driver.do_file(argv[1]);
-
-  Tona::VM vm;
+  auto mem = std::make_unique<std::vector<std::uint8_t>>(20);
+  Tona::VM vm(std::move(mem));
   Tona::Assembler ass;
   auto i = ass.compile(R"(
     load8 r0, 10
