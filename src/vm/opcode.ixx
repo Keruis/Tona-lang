@@ -96,7 +96,9 @@ export namespace Tona {
     OC_FSTM32, // mem[RA] = FB
     OC_FSTM, // mem[RA] = FB
 
-    //OC_GROW, // RA = malloc(RB)
+    OC_MALLOC, // RA = malloc(RB)
+    OC_MALLOCI, // RA = malloc(imm32)
+    OC_FREE, // free(RA)
     OC_UNKOWN = std::numeric_limits<std::uint8_t>::max(),
   };
 
@@ -201,7 +203,9 @@ export namespace Tona {
     {"fstm32", OpCode::OC_FSTM32},
     {"fstm", OpCode::OC_FSTM},
 
-    //{"grow", OpCode::OC_GROW}
+    {"malloc", OpCode::OC_MALLOC},
+    {"malloci", OpCode::OC_MALLOCI},
+    {"free", OpCode::OC_FREE},
   };
 
   OpCode find_opcode(std::string_view text) {
