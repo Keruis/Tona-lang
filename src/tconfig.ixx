@@ -11,4 +11,7 @@ export namespace Tona {
   // vm.ixx
   constexpr std::size_t TVM_MAX_REG_SIZE = 1024;
   constexpr std::size_t TVM_MAX_CALL_FRAME_SIZE = 1024;
+  constexpr std::size_t TVM_MAX_STACK_SIZE = 1024;
+
+  constexpr std::size_t TVM_STACK_ADDR_MASK = 1ull << 63;
 }

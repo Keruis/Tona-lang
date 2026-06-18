@@ -8,8 +8,21 @@ export namespace Tona {
 
   class Buf {
     public:
-      Buf() : cap(TBUF_INIT_SIZE) {
-        buf = new std::byte[TBUF_INIT_SIZE];
+      Buf() {}
+      Buf(const Buf&) = delete;
+      Buf& operator=(const Buf&) = delete;
+      Buf(Buf&& other) noexcept 
+        : buf(std::exchange(other.buf, nullptr)),
+          size(std::exchange(other.size, 0)),
+          cap(std::exchange(other.cap, 0)) {}
+      Buf& operator=(Buf&& other) noexcept {
+        if (this != &other) {
+          delete[] buf;
+          buf = std::exchange(other.buf, nullptr);
+          size = std::exchange(other.size, 0);
+          cap = std::exchange(other.cap, 0);
+        }
+        return *this;
       }
       ~Buf() {
         delete[] buf;
@@ -26,21 +39,26 @@ export namespace Tona {
       template <typename T>
         requires(std::is_trivially_copyable_v<T>)
       void stuff_back(const T* src, std::size_t len) {
-        reserve(size + len);
-        std::memcpy(&buf[size], src, len * sizeof(T));
-        size += (len * sizeof(T));
+        std::size_t alloc_size = len * sizeof(T);
+        reserve(size + alloc_size);
+        std::memcpy(&buf[size], src, alloc_size);
+        size += alloc_size;
       }
 
-      std::size_t buf_size() {
+      [[nodiscard]] std::size_t buf_size() const noexcept {
         return size;
       }
 
-      void reset() {
+      [[nodiscard]] std::size_t buf_cap() const noexcept {
+        return cap;
+      }
+
+      void reset() noexcept {
         size = 0;
       }
 
       template <typename RT>
-      RT buffer() {
+      [[nodiscard]] RT buffer() const noexcept {
         return reinterpret_cast<RT>(buf);
       }
 
@@ -48,8 +66,8 @@ export namespace Tona {
       void reserve(std::size_t min_size) {
         if (min_size > cap) {
           std::size_t alloc_size = min_size * TBUF_GROWTH_FACTOR;
-          std::byte* old_ptr = buf;
-          buf = new std::byte[alloc_size];
+          std::uint8_t* old_ptr = buf;
+          buf = new std::uint8_t[alloc_size];
           cap = alloc_size;
           std::memcpy(buf, old_ptr, size);
           delete[] old_ptr;
@@ -57,8 +75,8 @@ export namespace Tona {
       }
 
     private:
-      std::byte* buf;
-      std::size_t size;
-      std::size_t cap;
+      std::uint8_t* buf = new std::uint8_t[TBUF_INIT_SIZE];
+      std::size_t size = 0;
+      std::size_t cap = TBUF_INIT_SIZE;
   };
 }

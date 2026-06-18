@@ -325,33 +325,33 @@ export namespace Tona {
           std::uint64_t chunk_bytes;
           std::memcpy(&chunk_bytes, start, 8);
 
-          std::uint64_t quote_match        = chunk_bytes ^ Byte::char_mask<'"'>;
-          std::uint64_t escape_match       = chunk_bytes ^ Byte::char_mask<'\\'>;
-          std::uint64_t carriage_match     = chunk_bytes ^ Byte::char_mask<'\r'>;
-          std::uint64_t newline_match      = chunk_bytes ^ Byte::char_mask<'\n'>;
+          const std::uint64_t quote_match        = chunk_bytes ^ SWAR64::char_mask<'"'>;
+          const std::uint64_t escape_match       = chunk_bytes ^ SWAR64::char_mask<'\\'>;
+          const std::uint64_t carriage_match     = chunk_bytes ^ SWAR64::char_mask<'\r'>;
+          const std::uint64_t newline_match      = chunk_bytes ^ SWAR64::char_mask<'\n'>;
 
-          std::uint64_t null_minus_one     = chunk_bytes - Byte::all_bytes_one;
-          std::uint64_t quote_minus_one    = quote_match - Byte::all_bytes_one;
-          std::uint64_t escape_minus_one   = escape_match - Byte::all_bytes_one;
-          std::uint64_t carriage_minus_one = carriage_match - Byte::all_bytes_one;
-          std::uint64_t newline_minus_one  = newline_match - Byte::all_bytes_one;
+          const std::uint64_t null_minus_one     = chunk_bytes - SWAR64::all_bytes_one;
+          const std::uint64_t quote_minus_one    = quote_match - SWAR64::all_bytes_one;
+          const std::uint64_t escape_minus_one   = escape_match - SWAR64::all_bytes_one;
+          const std::uint64_t carriage_minus_one = carriage_match - SWAR64::all_bytes_one;
+          const std::uint64_t newline_minus_one  = newline_match - SWAR64::all_bytes_one;
 
-          std::uint64_t null_inverse       = ~chunk_bytes;
-          std::uint64_t quote_inverse      = ~quote_match;
-          std::uint64_t escape_inverse     = ~escape_match;
-          std::uint64_t carriage_inverse   = ~carriage_match;
-          std::uint64_t newline_inverse    = ~newline_match;
+          const std::uint64_t null_inverse       = ~chunk_bytes;
+          const std::uint64_t quote_inverse      = ~quote_match;
+          const std::uint64_t escape_inverse     = ~escape_match;
+          const std::uint64_t carriage_inverse   = ~carriage_match;
+          const std::uint64_t newline_inverse    = ~newline_match;
 
-          std::uint64_t null_msb_match     = null_minus_one & null_inverse;
-          std::uint64_t quote_msb_match    = quote_minus_one & quote_inverse;
-          std::uint64_t escape_msb_match   = escape_minus_one & escape_inverse;
-          std::uint64_t carriage_msb_match = carriage_minus_one & carriage_inverse;
-          std::uint64_t newline_msb_match  = newline_minus_one & newline_inverse;
+          const std::uint64_t null_msb_match     = null_minus_one & null_inverse;
+          const std::uint64_t quote_msb_match    = quote_minus_one & quote_inverse;
+          const std::uint64_t escape_msb_match   = escape_minus_one & escape_inverse;
+          const std::uint64_t carriage_msb_match = carriage_minus_one & carriage_inverse;
+          const std::uint64_t newline_msb_match  = newline_minus_one & newline_inverse;
 
-          std::uint64_t final_invalid_flags = (null_msb_match | quote_msb_match | escape_msb_match | carriage_msb_match | newline_msb_match) & Byte::msb_only_mask;
+          const std::uint64_t final_invalid_flags = (null_msb_match | quote_msb_match | escape_msb_match | carriage_msb_match | newline_msb_match) & SWAR64::msb_only_mask;
 
           if (final_invalid_flags) [[unlikely]] {
-            std::size_t size = match_offset(final_invalid_flags);
+            const std::size_t size = match_offset(final_invalid_flags);
             start += size;
             buffer.stuff_back(prev, start - prev);
             const char* const end = start + 8 - size;
@@ -384,7 +384,7 @@ export namespace Tona {
                         );
                         start++;
                       }
-                      goto check_out_range;
+                      break;
 
                     default:
                       if (!is_oct_char(*start)) {
@@ -395,9 +395,6 @@ export namespace Tona {
                         cur = cur * 8 + (*start - '0');
                         start++;
                       }
-                  check_out_range:
-                      if (cur > std::numeric_limits<std::uint8_t>::max())
-                        return std::unexpected(escape_ptr);
                   }
                   buffer.stuff_back(cur);
                   break;
@@ -439,28 +436,28 @@ export namespace Tona {
           std::uint64_t chunk_bytes; 
           std::memcpy(&chunk_bytes, start, 8);
 
-          std::uint64_t raw_7bit_bytes       = chunk_bytes & Byte::clear_msb_mask;
+          const std::uint64_t raw_7bit_bytes       = chunk_bytes & SWAR64::clear_msb_mask;
 
-          std::uint64_t flattened_case       = chunk_bytes | Byte::char_mask<0x20>;
-          std::uint64_t letters_7bit_bytes   = flattened_case & Byte::clear_msb_mask;
+          const std::uint64_t flattened_case       = chunk_bytes | SWAR64::char_mask<0x20>;
+          const std::uint64_t letters_7bit_bytes   = flattened_case & SWAR64::clear_msb_mask;
           
-          std::uint64_t letter_ge_a_overflow = letters_7bit_bytes + Byte::Range<'a'>::ge_addr;
-          std::uint64_t letter_gt_z_overflow = letters_7bit_bytes + Byte::Range<'z'>::gt_addr;
-          std::uint64_t letter_msb_match     = letter_ge_a_overflow ^ letter_gt_z_overflow;
+          const std::uint64_t letter_ge_a_overflow = letters_7bit_bytes + SWAR64::Range<'a'>::ge_addr;
+          const std::uint64_t letter_gt_z_overflow = letters_7bit_bytes + SWAR64::Range<'z'>::gt_addr;
+          const std::uint64_t letter_msb_match     = letter_ge_a_overflow ^ letter_gt_z_overflow;
 
-          std::uint64_t digit_ge_0_overflow  = raw_7bit_bytes + Byte::Range<'0'>::ge_addr;
-          std::uint64_t digit_gt_9_overflow  = raw_7bit_bytes + Byte::Range<'9'>::gt_addr;
-          std::uint64_t digit_msb_match      = digit_ge_0_overflow ^ digit_gt_9_overflow;
+          const std::uint64_t digit_ge_0_overflow  = raw_7bit_bytes + SWAR64::Range<'0'>::ge_addr;
+          const std::uint64_t digit_gt_9_overflow  = raw_7bit_bytes + SWAR64::Range<'9'>::gt_addr;
+          const std::uint64_t digit_msb_match      = digit_ge_0_overflow ^ digit_gt_9_overflow;
 
-          std::uint64_t under_msb_match      = Byte::msb_only_mask - (raw_7bit_bytes ^ Byte::char_mask<'_'>);
+          const std::uint64_t under_msb_match      = SWAR64::msb_only_mask - (raw_7bit_bytes ^ SWAR64::char_mask<'_'>);
 
-          std::uint64_t any_valid_msb = letter_msb_match | digit_msb_match | under_msb_match;
+          const std::uint64_t any_valid_msb = letter_msb_match | digit_msb_match | under_msb_match;
           
-          std::uint64_t invalid_msb_mask = ~any_valid_msb;
+          const std::uint64_t invalid_msb_mask = ~any_valid_msb;
           
-          std::uint64_t combined_invalid_and_raw = invalid_msb_mask | chunk_bytes;
+          const std::uint64_t combined_invalid_and_raw = invalid_msb_mask | chunk_bytes;
           
-          std::uint64_t final_invalid_flags = combined_invalid_and_raw & Byte::msb_only_mask;
+          const std::uint64_t final_invalid_flags = combined_invalid_and_raw & SWAR64::msb_only_mask;
 
           if (final_invalid_flags)
             return start + match_offset(final_invalid_flags);
@@ -476,21 +473,21 @@ export namespace Tona {
           std::uint64_t chunk_bytes;
           std::memcpy(&chunk_bytes, start, 8); 
 
-          std::uint64_t raw_7bit_bytes = chunk_bytes & Byte::clear_msb_mask;
+          const std::uint64_t raw_7bit_bytes = chunk_bytes & SWAR64::clear_msb_mask;
 
-          std::uint64_t bin_diff = (raw_7bit_bytes & Byte::not_all_byte_one) ^ Byte::char_mask<0x30>;
-          std::uint64_t sep_diff = raw_7bit_bytes ^ Byte::char_mask<'\''>;
+          const std::uint64_t bin_diff = (raw_7bit_bytes & SWAR64::not_all_byte_one) ^ SWAR64::char_mask<0x30>;
+          const std::uint64_t sep_diff = raw_7bit_bytes ^ SWAR64::char_mask<'\''>;
 
-          std::uint64_t bin_valid = Byte::msb_only_mask - bin_diff;
-          std::uint64_t sep_valid = Byte::msb_only_mask - sep_diff;
+          const std::uint64_t bin_valid = SWAR64::msb_only_mask - bin_diff;
+          const std::uint64_t sep_valid = SWAR64::msb_only_mask - sep_diff;
 
-          std::uint64_t vaild_msb = ~(bin_valid | sep_valid);
+          const std::uint64_t vaild_msb = ~(bin_valid | sep_valid);
 
-          std::uint64_t final_invalid_flags = (vaild_msb | chunk_bytes) & Byte::msb_only_mask;
+          std::uint64_t final_invalid_flags = (vaild_msb | chunk_bytes) & SWAR64::msb_only_mask;
 
-          std::uint64_t sep_bytes = sep_valid & Byte::msb_only_mask;
+          const std::uint64_t sep_bytes = sep_valid & SWAR64::msb_only_mask;
           std::uint64_t consecutive_sep = 0;
-          std::uint64_t boundary_sep = prev_ends_with_sep & sep_bytes;
+          const std::uint64_t boundary_sep = prev_ends_with_sep & sep_bytes;
 
           if constexpr (std::endian::native == std::endian::big) {
             consecutive_sep = sep_bytes & (sep_bytes >> 8);
