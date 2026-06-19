@@ -6,17 +6,13 @@ export namespace Tona {
 
   enum class OpCode : std::uint8_t {
     OC_SYS_EXIT,              // exit vm
-    OC_SYS_ABORT,             // code = R exit vm
+    OC_SYS_ABORT,             // code = A exit vm
 
     OC_DEBUG_PRINT_G,         // print(A)
-    OC_DEBUG_PRINT_F,         // print(A)
     OC_DEBUG_PRINT_S,         // print(*A)
     OC_DEBUG_PRINT_REGS,      // print(all regs)
-    OC_DEBUG_PRINT_DUMPSTK,   // print(call frame)
+    OC_DEBUG_PRINT_DUMPSTK,   // print(stack)
     OC_DEBUG_PRINT_DUMPMEM,   // print(A-B hex dump mem)
-    OC_DEBUG_ASSERT,          // if (A == 0) sys.abort(AssertError)
-    OC_DEBUG_BRK,             //
-    OC_DEBUG_TICK,            // A = time
 
     OC_STACK_ALLOC,           // sb += imm32
     OC_STACK_FREE,            // sb -= imm32
@@ -136,18 +132,14 @@ export namespace Tona {
     {"sys.abort",     OpCode::OC_SYS_ABORT},
 
     {"debug.printg",  OpCode::OC_DEBUG_PRINT_G},
-    {"debug.printf",  OpCode::OC_DEBUG_PRINT_F},
     {"debug.prints",  OpCode::OC_DEBUG_PRINT_S},
     {"debug.regs",    OpCode::OC_DEBUG_PRINT_REGS},
     {"debug.dumpstk", OpCode::OC_DEBUG_PRINT_DUMPSTK},
     {"debug.dumpmem", OpCode::OC_DEBUG_PRINT_DUMPMEM},
-    {"debug.assert",  OpCode::OC_DEBUG_ASSERT},
-    {"debug.brk",     OpCode::OC_DEBUG_BRK},
-    {"debug.tick",   OpCode::OC_DEBUG_TICK},
 
-    {"stk.alloc",    OpCode::OC_STACK_ALLOC},
-    {"stk.free",     OpCode::OC_STACK_FREE},
-    {"stk.load8u",   OpCode::OC_STACK_LOAD_8U},
+    {"stk.alloc",     OpCode::OC_STACK_ALLOC},
+    {"stk.free",      OpCode::OC_STACK_FREE},
+    {"stk.load8u",    OpCode::OC_STACK_LOAD_8U},
     {"stk.load8s",   OpCode::OC_STACK_LOAD_8S},
     {"stk.load16u",  OpCode::OC_STACK_LOAD_16U},
     {"stk.load16s",  OpCode::OC_STACK_LOAD_16S},
@@ -238,9 +230,9 @@ export namespace Tona {
     {"ctrl.jle",     OpCode::OC_CTRL_JLE},
     {"ctrl.jb",      OpCode::OC_CTRL_JB},
     {"ctrl.jbe",     OpCode::OC_CTRL_JBE},
-    {"ctrl.f32je",   OpCode::OC_CTRL_F32JE},
-    {"ctrl.f32jne",  OpCode::OC_CTRL_F32JNE},
-    {"ctrl.f32jl",   OpCode::OC_CTRL_F32JL},
+    {"ctrl.f32je",  OpCode::OC_CTRL_F32JE},
+    {"ctrl.f32jne", OpCode::OC_CTRL_F32JNE},
+    {"ctrl.f32jl",  OpCode::OC_CTRL_F32JL},
     {"ctrl.f32jle", OpCode::OC_CTRL_F32JLE},
     {"ctrl.f64je",  OpCode::OC_CTRL_F64JE},
     {"ctrl.f64jne", OpCode::OC_CTRL_F64JNE},

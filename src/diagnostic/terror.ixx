@@ -24,4 +24,9 @@ export namespace Tona {
     LexErrorType type;
   };
 
+  // VM
+  enum class VMErrorType : std::uint8_t {
+    VMET_NONE,
+  };
+
 }
