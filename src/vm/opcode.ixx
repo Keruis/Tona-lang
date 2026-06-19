@@ -6,231 +6,247 @@ export namespace Tona {
 
   enum class OpCode : std::uint8_t {
     OC_SYS_EXIT,              // exit vm
-    OC_SYS_ABORT,             // code = RA exit vm
+    OC_SYS_ABORT,             // code = R exit vm
 
-    OC_DEBUG_PRINT_G,         // print(RA)
-    OC_DEBUG_PRINT_F,         // print(FA)
-    OC_DEBUG_PRINT_S,         // print(*RA)
+    OC_DEBUG_PRINT_G,         // print(A)
+    OC_DEBUG_PRINT_F,         // print(A)
+    OC_DEBUG_PRINT_S,         // print(*A)
     OC_DEBUG_PRINT_REGS,      // print(all regs)
     OC_DEBUG_PRINT_DUMPSTK,   // print(call frame)
-    OC_DEBUG_PRINT_DUMPMEM,   // print(RA-RB hex dump mem)
-    OC_DEBUG_ASSERT,          // if (RA == 0) sys.abort(AssertError)
+    OC_DEBUG_PRINT_DUMPMEM,   // print(A-B hex dump mem)
+    OC_DEBUG_ASSERT,          // if (A == 0) sys.abort(AssertError)
     OC_DEBUG_BRK,             //
-    OC_DEBUG_TICK,            // RA = time
+    OC_DEBUG_TICK,            // A = time
 
     OC_STACK_ALLOC,           // sb += imm32
     OC_STACK_FREE,            // sb -= imm32
-    OC_STACK_LOAD_8U,         // RA = stack[sb + imm32]
-    OC_STACK_LOAD_8S,         // RA = stack[sb + imm32]
-    OC_STACK_LOAD_16U,        // RA = stack[sb + imm32]
-    OC_STACK_LOAD_16S,        // RA = stack[sb + imm32]
-    OC_STACK_LOAD_32U,        // RA = stack[sb + imm32]
-    OC_STACK_LOAD_32S,        // RA = stack[sb + imm32]
-    OC_STACK_LOAD_64,         // RA = stack[sb + imm32]
-    OC_STACK_LOAD_F32,        // RA = stack[sb + imm32]
-    OC_STACK_LOAD_F64,        // RA = stack[sb + imm32]
-    OC_STACK_STORE_8,         // stack[imm32] = RA
-    OC_STACK_STORE_16,        // stack[imm32] = RA
-    OC_STACK_STORE_32,        // stack[imm32] = RA
-    OC_STACK_STORE_64,        // stack[imm32] = RA
-    OC_STACK_STORE_F32,       // stack[imm32] = FA
-    OC_STACK_STORE_F64,       // stack[imm32] = FA
+    OC_STACK_LOAD_8U,         // A = stack[sb + imm32]
+    OC_STACK_LOAD_8S,         // A = stack[sb + imm32]
+    OC_STACK_LOAD_16U,        // A = stack[sb + imm32]
+    OC_STACK_LOAD_16S,        // A = stack[sb + imm32]
+    OC_STACK_LOAD_32U,        // A = stack[sb + imm32]
+    OC_STACK_LOAD_32S,        // A = stack[sb + imm32]
+    OC_STACK_LOAD_64,         // A = stack[sb + imm32]
+    OC_STACK_STORE_8,         // stack[imm32] = A
+    OC_STACK_STORE_16,        // stack[imm32] = A
+    OC_STACK_STORE_32,        // stack[imm32] = A
+    OC_STACK_STORE_64,        // stack[imm32] = A
 
-    OC_MEMORY_ALLOC,          // RA = malloc(RB)
-    OC_MEMORY_FREE,           // free(RA)
-    OC_MEMORY_LOAD_8U,        // RA = memory[RB]
-    OC_MEMORY_LOAD_8S,        // RA = memory[RB]
-    OC_MEMORY_LOAD_16U,       // RA = memory[RB]
-    OC_MEMORY_LOAD_16S,       // RA = memory[RB]
-    OC_MEMORY_LOAD_32U,       // RA = memory[RB]
-    OC_MEMORY_LOAD_32S,       // RA = memory[RB]
-    OC_MEMORY_LOAD_64,        // RA = memory[RB]
-    OC_MEMORY_LOAD_F32,       // RA = memory[RB]
-    OC_MEMORY_LOAD_F64,       // RA = memory[RB]
-    OC_MEMORY_STORE_8,        // memory[RA] = RB
-    OC_MEMORY_STORE_16,       // memory[RA] = RB
-    OC_MEMORY_STORE_32,       // memory[RA] = RB
-    OC_MEMORY_STORE_64,       // memory[RA] = RB
-    OC_MEMORY_STORE_F32,      // memory[RA] = FB
-    OC_MEMORY_STORE_F64,      // memory[RA] = FB
-    OC_MEMORY_CPY,            // memcpy(RA, RB, RC)
-    OC_MEMORY_SET,            // memfill<width = imm32>(RA, RB, RC)
-    OC_MEMORY_CMP,            // RA = memcmp(RB, RC, RD)
+    OC_MEMORY_ALLOC,          // A = malloc(B)
+    OC_MEMORY_FREE,           // free(A)
+    OC_MEMORY_LOAD_8U,        // A = memory[B]
+    OC_MEMORY_LOAD_8S,        // A = memory[B]
+    OC_MEMORY_LOAD_16U,       // A = memory[B]
+    OC_MEMORY_LOAD_16S,       // A = memory[B]
+    OC_MEMORY_LOAD_32U,       // A = memory[B]
+    OC_MEMORY_LOAD_32S,       // A = memory[B]
+    OC_MEMORY_LOAD_64,        // A = memory[B]
+    OC_MEMORY_STORE_8,        // memory[A] = B
+    OC_MEMORY_STORE_16,       // memory[A] = B
+    OC_MEMORY_STORE_32,       // memory[A] = B
+    OC_MEMORY_STORE_64,       // memory[A] = B
+    OC_MEMORY_CPY,            // memcpy(A, B, C)
+    OC_MEMORY_FILL,           // memfill<width = imm32>(A, B, C)
+    OC_MEMORY_CMP,            // A = memcmp(B, C, D)
 
-    OC_REG_MOVE,              // RA = RB
-    OC_REG_MOVE_8S,           // RA = RB
-    OC_REG_MOVE_16S,          // RA = RB
-    OC_REG_MOVE_32S,          // RA = RB
-    OC_REG_MOVE_F,            // FA = FB
-    OC_REG_SWAP,              // swap(RA, RB)
-    OC_REG_SWAP_F,            // swap(FA, FB)
-    OC_REG_LOAD_8U,           // RA = imm8
-    OC_REG_LOAD_8S,           // RA = imm8
-    OC_REG_LOAD_16U,          // RA = imm16
-    OC_REG_LOAD_16S,          // RA = imm16
-    OC_REG_LOAD_32U,          // RA = imm32
-    OC_REG_LOAD_32S,          // RA = imm32
-    OC_REG_LOAD_64,           // RA = imm64
-    OC_REG_LOAD_F32,          // FA = imm32
-    OC_REG_LOAD_F64,          // FA = imm64
+    OC_REG_MOVE_8,            // A = B
+    OC_REG_MOVE_16,           // A = B
+    OC_REG_MOVE_32,           // A = B
+    OC_REG_MOVE_64,           // A = B
+    OC_REG_SWAP,              // swap(A, B)
+    OC_REG_LOAD_8U,           // A = imm8
+    OC_REG_LOAD_8S,           // A = imm8
+    OC_REG_LOAD_16U,          // A = imm16
+    OC_REG_LOAD_16S,          // A = imm16
+    OC_REG_LOAD_32U,          // A = imm32
+    OC_REG_LOAD_32S,          // A = imm32
+    OC_REG_LOAD_64,           // A = imm64
 
-    OC_ALU_ITOF,              // FA = RB
-    OC_ALU_UTOF,              // FA = RB
-    OC_ALU_FTOI,              // RA = FB
-    OC_ALU_FTOU,              // RA = FB
-    OC_ALU_INC,               // RA = RA + 1
-    OC_ALU_DEC,               // RA = RA - 1
-    OC_ALU_NEG,               // RA = -RA
-    OC_ALU_NEG_F,             // FA = -FA
-    OC_ALU_ADD,               // RA = RB + RC
-    OC_ALU_ADD_F,             // FA = FB + FC
-    OC_ALU_SUB,               // RA = RB - RC
-    OC_ALU_SUB_F,             // FA = FB - FC
-    OC_ALU_MUL,               // RA = RB * RC
-    OC_ALU_MUL_F,             // FA = FB * FC
-    OC_ALU_DIV_U,             // RA = RB / RC
-    OC_ALU_DIV_S,             // RA = RB / RC
-    OC_ALU_DIV_F,             // FA = FB / FC
-    OC_ALU_MOD_U,             // RA = RB % RC
-    OC_ALU_MOD_S,             // RA = RB % RC
-    OC_ALU_AND,               // RA = RB & RC
-    OC_ALU_OR,                // RA = RB | RC
-    OC_ALU_XOR,               // RA = RB ^ RC
-    OC_ALU_NOT,               // RA = ~RB
-    OC_ALU_SHL,               // RA = RB << RC
-    OC_ALU_SHR,               // RA = RB >>(L) RC
-    OC_ALU_SAR,               // RA = RB >>(A) RC
-
+    OC_ALU_I64TOF64,          // A = B
+    OC_ALU_U64TOF64,          // A = B
+    OC_ALU_I64TOF32,          // A = B
+    OC_ALU_U64TOF32,          // A = B
+    OC_ALU_F64TOI64,          // A = B
+    OC_ALU_F64TOU64,          // A = B
+    OC_ALU_F32TOI64,          // A = B
+    OC_ALU_F32TOU64,          // A = B
+    OC_ALU_CVT_8S,            // A = B
+    OC_ALU_CVT_16S,           // A = B
+    OC_ALU_CVT_32S,           // A = B
+    OC_ALU_INC,               // A = A + 1
+    OC_ALU_DEC,               // A = A - 1
+    OC_ALU_NEG,               // A = -A
+    OC_ALU_NEG_F32,           // A = -A
+    OC_ALU_NEG_F64,           // A = -A
+    OC_ALU_ADD,               // A = B + C
+    OC_ALU_ADD_F32,           // A = B + C
+    OC_ALU_ADD_F64,           // A = B + C
+    OC_ALU_SUB,               // A = B - C
+    OC_ALU_SUB_F32,           // A = B - C
+    OC_ALU_SUB_F64,           // A = B - C
+    OC_ALU_MUL,               // A = B * C
+    OC_ALU_MUL_F32,           // A = B * C
+    OC_ALU_MUL_F64,           // A = B * C
+    OC_ALU_DIV_U,             // A = B / C
+    OC_ALU_DIV_S,             // A = B / C
+    OC_ALU_DIV_F32,           // A = B / C
+    OC_ALU_DIV_F64,           // A = B / C
+    OC_ALU_MOD_U,             // A = B % C
+    OC_ALU_MOD_S,             // A = B % C
+    OC_ALU_AND,               // A = B & C
+    OC_ALU_OR,                // A = B | C
+    OC_ALU_XOR,               // A = B ^ C
+    OC_ALU_NOT,               // A = ~B
+    OC_ALU_SHL,               // A = B << C
+    OC_ALU_SHR,               // A = B >>(L) RC
+    OC_ALU_SAR,               // A = B >>(A) RC
 
     OC_CTRL_JMP,              // ip += offset
-    OC_CTRL_JMPO,             // ip += RA
-    OC_CTRL_JE,               // if (RA == RB) ip += offset
-    OC_CTRL_JNE,              // if (RA != RB) ip += offset
-    OC_CTRL_JG,               // if (RA > RB) ip += offset
-    OC_CTRL_JGE,              // if (RA >= RB) ip += offset
-    OC_CTRL_JL,               // if (RA < RB) ip += offset
-    OC_CTRL_JLE,              // if (RA <= RB) ip += offset
-    OC_CTRL_JA,               // if (RA > RB) ip += offset
-    OC_CTRL_JAE,              // if (RA >= RB) ip += offset
-    OC_CTRL_JB,               // if (RA < RB) ip += offset
-    OC_CTRL_JBE,              // if (RA <= RB) ip += offset
-    OC_CTRL_FJE,              // if (FA == FB) ip += offset
-    OC_CTRL_FJNE,             // if (FA != FB) ip += offset
-    OC_CTRL_FJG,              // if (FA > FB) ip += offset
-    OC_CTRL_FJGE,             // if (FA >= FB) ip += offset
-    OC_CTRL_FJL,              // if (FA < FB) ip += offset
-    OC_CTRL_FJLE,             // if (FA <= FB) ip += offset
+    OC_CTRL_JMPO,             // ip += A
+    OC_CTRL_JZ,               // if (A == 0) ip += offset
+    OC_CTRL_JNZ,              // if (A != 0) ip += offset
+    OC_CTRL_JE,               // if (A == B) ip += offset
+    OC_CTRL_JNE,              // if (A != B) ip += offset
+    OC_CTRL_JL,               // if (A < B) ip += offset
+    OC_CTRL_JLE,              // if (A <= B) ip += offset
+    OC_CTRL_JB,               // if (A < B) ip += offset
+    OC_CTRL_JBE,              // if (A <= B) ip += offset
+    OC_CTRL_F32JE,            // if (A == B) ip += offset
+    OC_CTRL_F32JNE,           // if (A != B) ip += offset
+    OC_CTRL_F32JL,            // if (A < B) ip += offset
+    OC_CTRL_F32JLE,           // if (A <= B) ip += offset
+    OC_CTRL_F64JE,            // if (A == B) ip += offset
+    OC_CTRL_F64JNE,           // if (A != B) ip += offset
+    OC_CTRL_F64JL,            // if (A < B) ip += offset
+    OC_CTRL_F64JLE,           // if (A <= B) ip += offset
+    OC_CTRL_INC_JNE,          // A = A + 1 if (A != RB) ip += offset
+    OC_CTRL_DEC_JNZ,          // A = A - 1 if (A != 0) ip += offset
     OC_CTRL_CALL,             // ip += offset base += shift
     OC_CTRL_RET,              // ip = ret_addr base = ret_base
 
     OC_UNKOWN = std::numeric_limits<std::uint8_t>::max(),
   };
 
-  using GPRegister = std::uint64_t;
-  using FPRegister = double;
+  using Register = std::uint64_t;
 
   using Instruction = std::uint8_t;
 
-  struct CallFrame {
-    const Instruction* ret_addr;
-    std::size_t base;
-  };
-
   const std::flat_map<std::string_view, OpCode> opcodes {
-    {"debug.printg", OpCode::OC_DEBUG_PRINT_G},
-    {"debug.printf", OpCode::OC_DEBUG_PRINT_F},
+    {"sys.exit",      OpCode::OC_SYS_EXIT},
+    {"sys.abort",     OpCode::OC_SYS_ABORT},
 
-    {"move", OpCode::OC_MOVE},
-    {"fmove", OpCode::OC_FMOVE},
-    {"load8", OpCode::OC_LOAD8},
-    {"load16", OpCode::OC_LOAD16},
-    {"load32", OpCode::OC_LOAD32},
-    {"iload8", OpCode::OC_LOAD8S},
-    {"iload16", OpCode::OC_LOAD16S},
-    {"iload32", OpCode::OC_LOAD32S},
-    {"load", OpCode::OC_LOAD},
-    {"fload32", OpCode::OC_FLOAD32},
-    {"fload", OpCode::OC_FLOAD},
+    {"debug.printg",  OpCode::OC_DEBUG_PRINT_G},
+    {"debug.printf",  OpCode::OC_DEBUG_PRINT_F},
+    {"debug.prints",  OpCode::OC_DEBUG_PRINT_S},
+    {"debug.regs",    OpCode::OC_DEBUG_PRINT_REGS},
+    {"debug.dumpstk", OpCode::OC_DEBUG_PRINT_DUMPSTK},
+    {"debug.dumpmem", OpCode::OC_DEBUG_PRINT_DUMPMEM},
+    {"debug.assert",  OpCode::OC_DEBUG_ASSERT},
+    {"debug.brk",     OpCode::OC_DEBUG_BRK},
+    {"debug.tick",   OpCode::OC_DEBUG_TICK},
 
-    {"inc", OpCode::OC_INC},
-    {"dec", OpCode::OC_DEC},
-    {"neg", OpCode::OC_NEG},
-    {"add", OpCode::OC_ADD},
-    {"sub", OpCode::OC_SUB},
-    {"mul", OpCode::OC_MUL},
-    {"div", OpCode::OC_DIV},
-    {"idiv", OpCode::OC_DIVS},
-    {"mod", OpCode::OC_MOD},
-    {"imod", OpCode::OC_MODS},
+    {"stk.alloc",    OpCode::OC_STACK_ALLOC},
+    {"stk.free",     OpCode::OC_STACK_FREE},
+    {"stk.load8u",   OpCode::OC_STACK_LOAD_8U},
+    {"stk.load8s",   OpCode::OC_STACK_LOAD_8S},
+    {"stk.load16u",  OpCode::OC_STACK_LOAD_16U},
+    {"stk.load16s",  OpCode::OC_STACK_LOAD_16S},
+    {"stk.load32u",  OpCode::OC_STACK_LOAD_32U},
+    {"stk.load32s",  OpCode::OC_STACK_LOAD_32S},
+    {"stk.load64",   OpCode::OC_STACK_LOAD_64},
+    {"stk.store8",   OpCode::OC_STACK_STORE_8},
+    {"stk.store16",  OpCode::OC_STACK_STORE_16},
+    {"stk.store32",  OpCode::OC_STACK_STORE_32},
+    {"stk.store64",  OpCode::OC_STACK_STORE_64},
+    
+    {"mem.alloc",    OpCode::OC_MEMORY_ALLOC},
+    {"mem.free",     OpCode::OC_MEMORY_FREE},
+    {"mem.load8u",   OpCode::OC_MEMORY_LOAD_8U},
+    {"mem.load8s",   OpCode::OC_MEMORY_LOAD_8S},
+    {"mem.load16u",  OpCode::OC_MEMORY_LOAD_16U},
+    {"mem.load16s",  OpCode::OC_MEMORY_LOAD_16S},
+    {"mem.load32u",  OpCode::OC_MEMORY_LOAD_32U},
+    {"mem.load32s",  OpCode::OC_MEMORY_LOAD_32S},
+    {"mem.load64",   OpCode::OC_MEMORY_LOAD_64},
+    {"mem.store8",   OpCode::OC_MEMORY_STORE_8},
+    {"mem.store16",  OpCode::OC_MEMORY_STORE_16},
+    {"mem.store32",  OpCode::OC_MEMORY_STORE_32},
+    {"mem.store64",  OpCode::OC_MEMORY_STORE_64},
+    {"mem.cpy",      OpCode::OC_MEMORY_CPY},
+    {"mem.fill",     OpCode::OC_MEMORY_FILL},
+    {"mem.cmp",      OpCode::OC_MEMORY_CMP},
 
-    {"fneg", OpCode::OC_FNEG},
-    {"fadd", OpCode::OC_FADD},
-    {"fsub", OpCode::OC_FSUB},
-    {"fmul", OpCode::OC_FMUL},
-    {"fdiv", OpCode::OC_FDIV},
-    {"fmax", OpCode::OC_FMAX},
-    {"fmin", OpCode::OC_FMIN},
-    {"fsqrt", OpCode::OC_FSQRT},
+    {"reg.move8",    OpCode::OC_REG_MOVE_8},
+    {"reg.move16",   OpCode::OC_REG_MOVE_16},
+    {"reg.move32",   OpCode::OC_REG_MOVE_32},
+    {"reg.move64",   OpCode::OC_REG_MOVE_64},
+    {"reg.swap",     OpCode::OC_REG_SWAP},
+    {"reg.load8u",   OpCode::OC_REG_LOAD_8U},
+    {"reg.load8s",   OpCode::OC_REG_LOAD_8S},
+    {"reg.load16u",  OpCode::OC_REG_LOAD_16U},
+    {"reg.load16s",  OpCode::OC_REG_LOAD_16S},
+    {"reg.load32u",  OpCode::OC_REG_LOAD_32U},
+    {"reg.load32s",  OpCode::OC_REG_LOAD_32S},
+    {"reg.load64",   OpCode::OC_REG_LOAD_64},
 
-    {"itof", OpCode::OC_ITOF},
-    {"utof", OpCode::OC_UTOF},
-    {"ftoi", OpCode::OC_FTOI},
-    {"ftou", OpCode::OC_FTOU},
+    {"alu.i64tof64", OpCode::OC_ALU_I64TOF64},
+    {"alu.u64tof64", OpCode::OC_ALU_U64TOF64},
+    {"alu.f64toi32", OpCode::OC_ALU_I64TOF32},
+    {"alu.f64tou32", OpCode::OC_ALU_U64TOF32},
+    {"alu.i64tof64", OpCode::OC_ALU_F64TOI64},
+    {"alu.u64tof64", OpCode::OC_ALU_F64TOU64},
+    {"alu.f32toi64", OpCode::OC_ALU_F32TOI64},
+    {"alu.f32tou64", OpCode::OC_ALU_F32TOU64},
+    {"alu.inc",      OpCode::OC_ALU_INC},
+    {"alu.dec",      OpCode::OC_ALU_DEC},
+    {"alu.neg",      OpCode::OC_ALU_NEG},
+    {"alu.fneg",     OpCode::OC_ALU_NEG_F32},
+    {"alu.fneg",     OpCode::OC_ALU_NEG_F64},
+    {"alu.add",      OpCode::OC_ALU_ADD},
+    {"alu.f32add",   OpCode::OC_ALU_ADD_F32},
+    {"alu.f64add",   OpCode::OC_ALU_ADD_F64},
+    {"alu.sub",      OpCode::OC_ALU_SUB},
+    {"alu.f32sub",   OpCode::OC_ALU_SUB_F32},
+    {"alu.f64sub",   OpCode::OC_ALU_SUB_F64},
+    {"alu.mul",      OpCode::OC_ALU_MUL},
+    {"alu.f32mul",   OpCode::OC_ALU_MUL_F32},
+    {"alu.f64mul",   OpCode::OC_ALU_MUL_F64},
+    {"alu.divu",     OpCode::OC_ALU_DIV_U},
+    {"alu.divs",     OpCode::OC_ALU_DIV_S},
+    {"alu.f32div",   OpCode::OC_ALU_DIV_F32},
+    {"alu.f64div",   OpCode::OC_ALU_DIV_F64},
+    {"alu.modu",     OpCode::OC_ALU_MOD_U},
+    {"alu.mods",     OpCode::OC_ALU_MOD_S},
+    {"alu.and",      OpCode::OC_ALU_AND},
+    {"alu.or",       OpCode::OC_ALU_OR},
+    {"alu.xor",      OpCode::OC_ALU_XOR},
+    {"alu.not",      OpCode::OC_ALU_NOT},
+    {"alu.shl",      OpCode::OC_ALU_SHL},
+    {"alu.shr",      OpCode::OC_ALU_SHR},
+    {"alu.sar",      OpCode::OC_ALU_SAR},
 
-    {"jmp", OpCode::OC_JMP},
-    {"jmpo", OpCode::OC_JMPO},
-    {"je", OpCode::OC_JE},
-    {"jne", OpCode::OC_JNE},
-    {"jg", OpCode::OC_JG},
-    {"jge", OpCode::OC_JGE},
-    {"jl", OpCode::OC_JL},
-    {"jle", OpCode::OC_JLE},
-    {"ja", OpCode::OC_JA},
-    {"jae", OpCode::OC_JAE},
-    {"jb", OpCode::OC_JB},
-    {"jbe", OpCode::OC_JBE},
-    {"fje", OpCode::OC_FJE},
-    {"fjne", OpCode::OC_FJNE},
-    {"fjg", OpCode::OC_FJG},
-    {"fjge", OpCode::OC_FJGE},
-    {"fjl", OpCode::OC_FJL},
-    {"fjle", OpCode::OC_FJLE},
-
-    {"and", OpCode::OC_AND},
-    {"or", OpCode::OC_OR},
-    {"xor", OpCode::OC_XOR},
-    {"not", OpCode::OC_NOT},
-
-    {"shl", OpCode::OC_SHL},
-    {"shr", OpCode::OC_SHR},
-    {"sar", OpCode::OC_SAR},
-
-    {"sext8", OpCode::OC_SEXT8},
-    {"sext16", OpCode::OC_SEXT16},
-    {"sext32", OpCode::OC_SEXT32},
-
-    {"call", OpCode::OC_CALL},
-    {"ret", OpCode::OC_RET},
-
-    {"ldm8", OpCode::OC_LDM8},
-    {"ldm16", OpCode::OC_LDM16},
-    {"ldm32", OpCode::OC_LDM32},
-    {"ildm8", OpCode::OC_LDM8S},
-    {"ildm16", OpCode::OC_LDM16S},
-    {"ildm32", OpCode::OC_LDM32S},
-    {"ldm", OpCode::OC_LDM},
-    {"fldm32", OpCode::OC_FLDM32},
-    {"fldm", OpCode::OC_FLDM},
-    {"stm8", OpCode::OC_STM8},
-    {"stm16", OpCode::OC_STM16},
-    {"stm32", OpCode::OC_STM32},
-    {"stm", OpCode::OC_STM},
-    {"fstm32", OpCode::OC_FSTM32},
-    {"fstm", OpCode::OC_FSTM},
-
-    {"malloc", OpCode::OC_MALLOC},
-    {"malloci", OpCode::OC_MALLOCI},
-    {"free", OpCode::OC_FREE},
+    {"ctrl.jmp",     OpCode::OC_CTRL_JMP},
+    {"ctrl.jmpo",    OpCode::OC_CTRL_JMPO},
+    {"ctrl.jz",      OpCode::OC_CTRL_JZ},
+    {"ctrl.jnz",     OpCode::OC_CTRL_JNZ},
+    {"ctrl.je",      OpCode::OC_CTRL_JE},
+    {"ctrl.jne",     OpCode::OC_CTRL_JNE},
+    {"ctrl.jl",      OpCode::OC_CTRL_JL},
+    {"ctrl.jle",     OpCode::OC_CTRL_JLE},
+    {"ctrl.jb",      OpCode::OC_CTRL_JB},
+    {"ctrl.jbe",     OpCode::OC_CTRL_JBE},
+    {"ctrl.f32je",   OpCode::OC_CTRL_F32JE},
+    {"ctrl.f32jne",  OpCode::OC_CTRL_F32JNE},
+    {"ctrl.f32jl",   OpCode::OC_CTRL_F32JL},
+    {"ctrl.f32jle", OpCode::OC_CTRL_F32JLE},
+    {"ctrl.f64je",  OpCode::OC_CTRL_F64JE},
+    {"ctrl.f64jne", OpCode::OC_CTRL_F64JNE},
+    {"ctrl.f64jl",  OpCode::OC_CTRL_F64JL},
+    {"ctrl.f64jle", OpCode::OC_CTRL_F64JLE},
+    {"ctrl.ijne",   OpCode::OC_CTRL_INC_JNE},
+    {"ctrl.djnz",   OpCode::OC_CTRL_DEC_JNZ},
+    {"ctrl.call",   OpCode::OC_CTRL_CALL},
+    {"ctrl.ret",    OpCode::OC_CTRL_RET}
   };
 
   OpCode find_opcode(std::string_view text) {
