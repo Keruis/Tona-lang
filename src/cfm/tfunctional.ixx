@@ -46,22 +46,4 @@ export namespace Tona {
     }
   };
 
-  struct sign_extend_8 {
-    constexpr auto operator()(const auto& a) const {
-      return static_cast<std::int64_t>(static_cast<std::int8_t>(a));
-    }
-  };
-
-  struct sign_extend_16 {
-    constexpr auto operator()(const auto& a) const {
-      return static_cast<std::int64_t>(static_cast<std::int16_t>(a));
-    }
-  };
-
-  struct sign_extend_32 {
-    constexpr auto operator()(const auto& a) const {
-      return static_cast<std::int64_t>(static_cast<std::int32_t>(a));
-    }
-  };
-
 }

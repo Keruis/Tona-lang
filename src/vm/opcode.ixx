@@ -23,10 +23,10 @@ export namespace Tona {
     OC_STACK_LOAD_32U,        // A = stack[sb + imm32]
     OC_STACK_LOAD_32S,        // A = stack[sb + imm32]
     OC_STACK_LOAD_64,         // A = stack[sb + imm32]
-    OC_STACK_STORE_8,         // stack[imm32] = A
-    OC_STACK_STORE_16,        // stack[imm32] = A
-    OC_STACK_STORE_32,        // stack[imm32] = A
-    OC_STACK_STORE_64,        // stack[imm32] = A
+    OC_STACK_STORE_8,         // stack[sb + imm32] = A
+    OC_STACK_STORE_16,        // stack[sb + imm32] = A
+    OC_STACK_STORE_32,        // stack[sb + imm32] = A
+    OC_STACK_STORE_64,        // stack[sb + imm32] = A
 
     OC_MEMORY_ALLOC,          // A = malloc(B)
     OC_MEMORY_FREE,           // free(A)
@@ -41,8 +41,8 @@ export namespace Tona {
     OC_MEMORY_STORE_16,       // memory[A] = B
     OC_MEMORY_STORE_32,       // memory[A] = B
     OC_MEMORY_STORE_64,       // memory[A] = B
-    OC_MEMORY_CPY,            // memcpy(A, B, C)
-    OC_MEMORY_FILL,           // memfill<width = imm32>(A, B, C)
+    OC_MEMORY_CPY,            // memcpy(dst: A, src: B, n: C)
+    OC_MEMORY_SET,            // memset(dst: A, val: B, n: C)
     OC_MEMORY_CMP,            // A = memcmp(B, C, D)
 
     OC_REG_MOVE_8,            // A = B
@@ -58,22 +58,22 @@ export namespace Tona {
     OC_REG_LOAD_32S,          // A = imm32
     OC_REG_LOAD_64,           // A = imm64
 
-    OC_ALU_I64TOF64,          // A = B
-    OC_ALU_U64TOF64,          // A = B
-    OC_ALU_I64TOF32,          // A = B
-    OC_ALU_U64TOF32,          // A = B
-    OC_ALU_F64TOI64,          // A = B
-    OC_ALU_F64TOU64,          // A = B
-    OC_ALU_F32TOI64,          // A = B
-    OC_ALU_F32TOU64,          // A = B
-    OC_ALU_CVT_8S,            // A = B
-    OC_ALU_CVT_16S,           // A = B
-    OC_ALU_CVT_32S,           // A = B
-    OC_ALU_INC,               // A = A + 1
-    OC_ALU_DEC,               // A = A - 1
-    OC_ALU_NEG,               // A = -A
-    OC_ALU_NEG_F32,           // A = -A
-    OC_ALU_NEG_F64,           // A = -A
+    OC_ALU_CVT_64S_F64,       // A = B
+    OC_ALU_CVT_64U_F64,       // A = B
+    OC_ALU_CVT_64S_F32,       // A = B
+    OC_ALU_CVT_64U_F32,       // A = B
+    OC_ALU_CVT_F64_64S,       // A = B
+    OC_ALU_CVT_F64_64U,       // A = B
+    OC_ALU_CVT_F32_64S,       // A = B
+    OC_ALU_CVT_F32_64U,       // A = B
+    OC_ALU_CVT_8S_64S,        // A = B
+    OC_ALU_CVT_16S_64S,       // A = B
+    OC_ALU_CVT_32S_64S,       // A = B
+    OC_ALU_INC,               // A = B + 1
+    OC_ALU_DEC,               // A = B - 1
+    OC_ALU_NEG,               // A = -B
+    OC_ALU_NEG_F32,           // A = -B
+    OC_ALU_NEG_F64,           // A = -B
     OC_ALU_ADD,               // A = B + C
     OC_ALU_ADD_F32,           // A = B + C
     OC_ALU_ADD_F64,           // A = B + C
@@ -94,8 +94,8 @@ export namespace Tona {
     OC_ALU_XOR,               // A = B ^ C
     OC_ALU_NOT,               // A = ~B
     OC_ALU_SHL,               // A = B << C
-    OC_ALU_SHR,               // A = B >>(L) RC
-    OC_ALU_SAR,               // A = B >>(A) RC
+    OC_ALU_SHR,               // A = B >> C
+    OC_ALU_SAR,               // A = B >> C
 
     OC_CTRL_JMP,              // ip += offset
     OC_CTRL_JMPO,             // ip += A
@@ -115,7 +115,7 @@ export namespace Tona {
     OC_CTRL_F64JNE,           // if (A != B) ip += offset
     OC_CTRL_F64JL,            // if (A < B) ip += offset
     OC_CTRL_F64JLE,           // if (A <= B) ip += offset
-    OC_CTRL_INC_JNE,          // A = A + 1 if (A != RB) ip += offset
+    OC_CTRL_INC_JNE,          // A = A + 1 if (A != B) ip += offset
     OC_CTRL_DEC_JNZ,          // A = A - 1 if (A != 0) ip += offset
     OC_CTRL_CALL,             // ip += offset base += shift
     OC_CTRL_RET,              // ip = ret_addr base = ret_base
@@ -165,7 +165,7 @@ export namespace Tona {
     {"mem.store32",  OpCode::OC_MEMORY_STORE_32},
     {"mem.store64",  OpCode::OC_MEMORY_STORE_64},
     {"mem.cpy",      OpCode::OC_MEMORY_CPY},
-    {"mem.fill",     OpCode::OC_MEMORY_FILL},
+    {"mem.set",      OpCode::OC_MEMORY_SET},
     {"mem.cmp",      OpCode::OC_MEMORY_CMP},
 
     {"reg.move8",    OpCode::OC_REG_MOVE_8},
@@ -181,17 +181,17 @@ export namespace Tona {
     {"reg.load32s",  OpCode::OC_REG_LOAD_32S},
     {"reg.load64",   OpCode::OC_REG_LOAD_64},
 
-    {"alu.i64tof64", OpCode::OC_ALU_I64TOF64},
-    {"alu.u64tof64", OpCode::OC_ALU_U64TOF64},
-    {"alu.i64tof32", OpCode::OC_ALU_I64TOF32},
-    {"alu.u64tof32", OpCode::OC_ALU_U64TOF32},
-    {"alu.f64toi64", OpCode::OC_ALU_F64TOI64},
-    {"alu.f64tou64", OpCode::OC_ALU_F64TOU64},
-    {"alu.f32toi64", OpCode::OC_ALU_F32TOI64},
-    {"alu.f32tou64", OpCode::OC_ALU_F32TOU64},
-    {"alu.cvt8s",    OpCode::OC_ALU_CVT_8S},
-    {"alu.cvt16s",   OpCode::OC_ALU_CVT_16S},
-    {"alu.cvt32s",   OpCode::OC_ALU_CVT_32S},
+    {"alu.cvtsf",    OpCode::OC_ALU_CVT_64S_F64},
+    {"alu.cvtuf",    OpCode::OC_ALU_CVT_64U_F64},
+    {"alu.cvtif32",  OpCode::OC_ALU_CVT_64S_F32},
+    {"alu.cvtuf32",  OpCode::OC_ALU_CVT_64U_F32},
+    {"alu.cvtfs",    OpCode::OC_ALU_CVT_F64_64S},
+    {"alu.cvtfu",    OpCode::OC_ALU_CVT_F64_64U},
+    {"alu.cvtf32i",  OpCode::OC_ALU_CVT_F32_64S},
+    {"alu.cvtf32u",  OpCode::OC_ALU_CVT_F32_64U},
+    {"alu.cvt8ss",   OpCode::OC_ALU_CVT_8S_64S},
+    {"alu.cvt16ss",  OpCode::OC_ALU_CVT_16S_64S},
+    {"alu.cvt32ss",  OpCode::OC_ALU_CVT_32S_64S},
     {"alu.inc",      OpCode::OC_ALU_INC},
     {"alu.dec",      OpCode::OC_ALU_DEC},
     {"alu.neg",      OpCode::OC_ALU_NEG},
@@ -251,4 +251,9 @@ export namespace Tona {
     ) [[likely]] return it->second;
     return OpCode::OC_UNKOWN;
   }
+
+  struct CallFrame {
+    const Instruction* ret_ip;
+    std::size_t ret_rb;
+  };
 }
