@@ -66,6 +66,7 @@ export namespace Tona {
     OC_ALU_CVT_F64_64U,       // A = B
     OC_ALU_CVT_F32_64S,       // A = B
     OC_ALU_CVT_F32_64U,       // A = B
+    OC_ALU_CVT_F32_F64,       // A = B
     OC_ALU_CVT_8S_64S,        // A = B
     OC_ALU_CVT_16S_64S,       // A = B
     OC_ALU_CVT_32S_64S,       // A = B
@@ -189,6 +190,7 @@ export namespace Tona {
     {"alu.cvtfu",    OpCode::OC_ALU_CVT_F64_64U},
     {"alu.cvtf32i",  OpCode::OC_ALU_CVT_F32_64S},
     {"alu.cvtf32u",  OpCode::OC_ALU_CVT_F32_64U},
+    {"alu.cvtf32f",  OpCode::OC_ALU_CVT_F32_F64},
     {"alu.cvt8ss",   OpCode::OC_ALU_CVT_8S_64S},
     {"alu.cvt16ss",  OpCode::OC_ALU_CVT_16S_64S},
     {"alu.cvt32ss",  OpCode::OC_ALU_CVT_32S_64S},

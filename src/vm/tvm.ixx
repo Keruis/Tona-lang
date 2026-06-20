@@ -81,6 +81,7 @@ export namespace Tona {
       alu_cvt_f64_64u: goto *labels[cvt<double, std::uint64_t>(++ip)];
       alu_cvt_f32_64s: goto *labels[cvt<float, std::int64_t>(++ip)];
       alu_cvt_f32_64u: goto *labels[cvt<float, std::uint64_t>(++ip)];
+      alu_cvt_f32_f64: goto *labels[cvt<float, double>(++ip)];
       alu_cvt_8s_64s:  goto *labels[cvt<std::int8_t, std::int64_t>(++ip)];
       alu_cvt_16s_64s: goto *labels[cvt<std::int16_t, std::int64_t>(++ip)];
       alu_cvt_32s_64s: goto *labels[cvt<std::int32_t, std::int64_t>(++ip)];
@@ -175,9 +176,9 @@ export namespace Tona {
       }
 
       [[nodiscard]] std::uint8_t jmpo(const Instruction*& ip) {
-        const auto& A = reg(*ip);
+        const auto& A = reg(*ip++);
         ip += extract_from_reg<std::int32_t>(A);
-        return *++ip;
+        return *ip;
       }
 
       template <typename T>
@@ -252,7 +253,7 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t move(const Instruction*& ip) noexcept {
         auto& A = reg(*ip);
         const auto& B = reg(*++ip);
-        A = store_to_reg(static_cast<T>(B));
+        A = store_to_reg(extract_from_reg<T>(B));
         return *++ip;
       }
 
@@ -325,7 +326,7 @@ export namespace Tona {
         const auto& B = reg(*++ip);
         const auto& C = reg(*++ip);
         const auto& D = reg(*++ip);
-        A = store_to_reg(std::memcmp(&mem[A], &mem[B], C));
+        A = store_to_reg(std::memcmp(&mem[B], &mem[C], D));
         return *++ip;
       }
 
@@ -375,10 +376,10 @@ export namespace Tona {
         std::println("start: {}", rb);
         for (std::size_t i = 0; i < 256; i++) {
           const auto& A = reg(i);
-          std::println("regs[{}]: 0x{:X}", *ip, A);
+          std::println("regs[{}]: 0x{:X}", i, A);
         }
         std::println("end: {}", rb + 256);
-        return *ip;
+        return *++ip;
       }
 
       [[nodiscard]] std::uint8_t dumpstk(const Instruction*& ip) {
@@ -411,13 +412,13 @@ export namespace Tona {
       template <typename T>
       [[nodiscard]] [[gnu::always_inline]] inline T load_from_stack(const std::uint32_t offset) const noexcept {
         T val;
-        std::memcpy(&val, &stack.get()[sb + offset], sizeof(T));
+        std::memcpy(&val, &stack.get()[sb - offset], sizeof(T));
         return val;
       }
 
       template <typename T>
       [[gnu::always_inline]] inline void store_from_stack(const std::uint32_t offset, T val) noexcept {
-        std::memcpy(&stack.get()[sb + offset], &val, sizeof(T));
+        std::memcpy(&stack.get()[sb - offset], &val, sizeof(T));
       }
 
       template <typename T>
