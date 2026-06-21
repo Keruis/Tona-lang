@@ -29,4 +29,12 @@ export namespace Tona {
     VMET_NONE,
   };
 
+  // Heap
+  enum class HeapErrorType : std::uint8_t {
+    HET_NONE,
+    HET_DOUBLE_FREE,
+    HET_CONSTANT_FREE,
+    HET_UNKNOW_FREE,
+  };
+
 }

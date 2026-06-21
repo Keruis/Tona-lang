@@ -7,6 +7,8 @@ import tona.byte;
 import tona.functional;
 import tona.opcode;
 import tona.error;
+import tona.stack;
+import tona.heap;
 
 export namespace Tona {
 
@@ -14,11 +16,12 @@ export namespace Tona {
     public:
       VM(std::vector<std::uint8_t>& memory) 
         : regs(std::make_unique<Register[]>(TVM_MAX_REG_SIZE)),
-          stack(std::make_unique<std::uint8_t[]>(TVM_MAX_STACK_SIZE)),
-          mem(memory) {}
+          stk(sb, TVM_MAX_STACK_SIZE),
+          mem(memory, memory.size()) 
+        {}
       VM(const VM&) = delete;
       VM& operator=(const VM&) = delete;
-      VM (VM&&) = default;
+      VM (VM&&) = delete;
       VM& operator=(VM&&) = delete;
       ~VM() = default;
 
@@ -275,17 +278,15 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t mem_alloc(const Instruction*& ip) {
         auto& A = reg(*ip);
         const auto& B = reg(*++ip);
-        const std::size_t old_size = mem.size();
-        mem.resize(old_size + B);
-        A = store_to_reg(old_size);
+        A = store_to_reg(mem.alloc(B));
         return *++ip;
       }
 
       [[nodiscard]] std::uint8_t mem_free(const Instruction*& ip) {
         const auto& A = reg(*ip);
-        /*
+        if (auto ec = mem.free(A); ec != HeapErrorType::HET_NONE) {
 
-        */
+        }
         return *++ip;
       }
 
@@ -293,7 +294,7 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t mem_load(const Instruction*& ip) {
         auto& A = reg(*ip);
         const auto& B = reg(*++ip);
-        A = store_to_reg(load_from_mem<T>(B));
+        A = store_to_reg(mem.load<T>(B));
         return *++ip;
       }
 
@@ -301,7 +302,7 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t mem_store(const Instruction*& ip) {
         const auto& A = reg(*ip);
         const auto& B = reg(*++ip);
-        store_from_mem(A, extract_from_reg<T>(B));
+        mem.store(A, extract_from_reg<T>(B));
         return *++ip;
       }
 
@@ -309,7 +310,7 @@ export namespace Tona {
         const auto& A = reg(*ip);
         const auto& B = reg(*++ip);
         const auto& C = reg(*++ip);
-        std::memcpy(&mem[A], &mem[B], C);
+        mem.mem_cpy(A, B, C);
         return *++ip;
       }
 
@@ -317,7 +318,7 @@ export namespace Tona {
         const auto& A = reg(*ip);
         const auto& B = reg(*++ip);
         const auto& C = reg(*++ip);
-        std::memset(&mem[A], B, C);
+        mem.mem_set(A, B, C);
         return *++ip;
       }
 
@@ -326,7 +327,7 @@ export namespace Tona {
         const auto& B = reg(*++ip);
         const auto& C = reg(*++ip);
         const auto& D = reg(*++ip);
-        A = store_to_reg(std::memcmp(&mem[B], &mem[C], D));
+        A = store_to_reg(mem.mem_cmp(B, C, D));
         return *++ip;
       }
 
@@ -347,7 +348,7 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t stk_load(const Instruction*& ip) {
         auto& A = reg(*ip);
         const auto imm = fetch_imm<std::uint32_t>(++ip);
-        A = store_to_reg(load_from_stack<T>(imm));
+        A = store_to_reg(stk.load<T>(imm));
         return *ip;
       }
 
@@ -355,7 +356,7 @@ export namespace Tona {
       [[nodiscard]] std::uint8_t stk_store(const Instruction*& ip) {
         const auto& A = reg(*ip);
         const auto imm = fetch_imm<std::uint32_t>(++ip);
-        store_from_stack(imm, extract_from_reg<T>(A));
+        stk.store(imm, extract_from_reg<T>(A));
         return *ip;
       }
 
@@ -368,7 +369,7 @@ export namespace Tona {
 
       [[nodiscard]] std::uint8_t sprint(const Instruction*& ip) {
         const auto& A = reg(*ip);
-        std::println("regs[{}]: \"{}\"", *ip, reinterpret_cast<char*>(&mem[A]));
+        std::println("regs[{}]: \"{}\"", *ip, reinterpret_cast<char*>(&mem.data()[A]));
         return *++ip;
       }
 
@@ -410,30 +411,6 @@ export namespace Tona {
       }
 
       template <typename T>
-      [[nodiscard]] [[gnu::always_inline]] inline T load_from_stack(const std::uint32_t offset) const noexcept {
-        T val;
-        std::memcpy(&val, &stack.get()[sb - offset], sizeof(T));
-        return val;
-      }
-
-      template <typename T>
-      [[gnu::always_inline]] inline void store_from_stack(const std::uint32_t offset, T val) noexcept {
-        std::memcpy(&stack.get()[sb - offset], &val, sizeof(T));
-      }
-
-      template <typename T>
-      [[nodiscard]] [[gnu::always_inline]] inline T load_from_mem(const std::uint32_t offset) const noexcept {
-        T val;
-        std::memcpy(&val, &mem[offset], sizeof(T));
-        return val;
-      }
-
-      template <typename T>
-      [[gnu::always_inline]] inline void store_from_mem(const std::uint32_t offset, T val) noexcept {
-        std::memcpy(&mem[offset], &val, sizeof(T));
-      }
-
-      template <typename T>
       [[gnu::always_inline]] inline T extract_from_reg(Register val) const noexcept {
         if constexpr (std::is_floating_point_v<T>) {
           using FT = std::conditional_t<sizeof(T) == 4, std::uint32_t, std::uint64_t>;
@@ -457,9 +434,9 @@ export namespace Tona {
       VMErrorType code = VMErrorType::VMET_NONE;
       std::size_t sb = 0;
       std::size_t rb = 0;
+      Stack stk;
+      Heap mem;
       std::unique_ptr<Register[]> regs;
-      std::unique_ptr<std::uint8_t[]> stack;
-      std::vector<std::uint8_t>& mem;
       std::vector<CallFrame> call_stack;
   };
 
