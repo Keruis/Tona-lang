@@ -15,7 +15,6 @@ export namespace Tona {
     public:
       [[noreturn]] void print_lex_err(std::size_t file_idx, const LexError& err, const SourceFiles& sf) {
         const auto ct = sf.find_char_table(file_idx, err.err_text.data());
-        std::println("{}", (ct.line_text.data() == nullptr));
         std::cerr << std::format(
           "{}|{}:{}\n{}",
           sf.path(file_idx), ct.line, ct.col, ct.line_text

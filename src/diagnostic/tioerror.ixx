@@ -15,6 +15,7 @@ export namespace Tona {
         path.string()
       ) << std::endl;
     }
+    
     if (code == std::errc::permission_denied) {
       std::cerr << std::format(
         "error permission_denied file_name: {}",

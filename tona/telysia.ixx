@@ -6,6 +6,7 @@ import tona.lexer;
 import tona.token;
 import tona.sourcefile;
 import tona.diag;
+import tona.arena;
 
 export namespace Tona {
 
@@ -19,7 +20,8 @@ export namespace Tona {
         Diagnostic diag;
         Lexer lex{};
         std::size_t file_idx = sf.registry_file(file_path);
-        auto token_ctx = lex.tokenize(sf.text(file_idx));
+        Arena arena(4096);
+        auto token_ctx = lex.tokenize(sf.text(file_idx), arena);
         if (!token_ctx.has_value())
           diag.print_lex_err(file_idx, token_ctx.error(), sf);
         print_token(token_ctx.value());
@@ -51,7 +53,7 @@ export namespace Tona {
             case TokenClass::C_IDENTIFIER:
             case TokenClass::C_LITERAL:
               if (tok.type == TokenType::T_LITERALS_STRING)
-                value_str = std::format("\"{}\"", ctx.strings[tok.str_idx]);
+                value_str = std::format("\"{}\"", std::string_view(tok.text.data, tok.text.len));
               else
                 value_str = std::string_view(tok.text.data, tok.text.len);
               break;

@@ -6,27 +6,27 @@ import tona.token;
 import tona.buf;
 import tona.byte;
 import tona.error;
+import tona.arena;
 
 export namespace Tona {
 
   class Lexer {
     public:
-      [[nodiscard]] std::expected<TokenContext, LexError> tokenize(std::string_view text) noexcept {
-        TokenContext ctx;
-
-        auto& vec_toks = ctx.tokens;
-        vec_toks.reserve(text.size() / 5);
+      [[nodiscard]] std::expected<TokenContext, LexError> tokenize(std::string_view text, Arena& arena) noexcept {
+        TokenContext ctx {
+          .tokens = std::pmr::vector<Token>(&arena)
+        };
 
         const char* cur = text.data();
 
         auto emit = [&][[gnu::always_inline]](Token&& tok) {
-          vec_toks.push_back(std::move(tok));
+          ctx.tokens.push_back(std::move(tok));
         };
 
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
 
-        constexpr void* labels[256] = {
+        static constexpr void* labels[256] = {
           #include "lexer_label.inc"
         };
 
@@ -34,40 +34,14 @@ export namespace Tona {
         
         l_skip: // ' '
         l_newline: // '\n'
-          do {
-            cur++;
-          } while (*cur == ' ' || *cur == '\t' || *cur == '\n');
-          goto *labels[cast_u8(*cur)];
+          goto *labels[cast_u8(*(cur = skip_whitespace(cur)))];
           
-        l_identifier: { // a - z A - Z _
-          const char* const end_ptr = identifier_char(cur);
-          std::string_view identifier(cur, end_ptr);
-          if (
-            auto res = find_keyword(identifier); 
-            res == TokenType::T_IDENTIFIER
-          ) emit({
-              .text = {
-                .data = cur,
-                .len = identifier.size()
-              },
-              .start = cur,
-              .type = TokenType::T_IDENTIFIER
-            });
-          else emit({
-            .start = cur,
-            .type = res
-          });
-
-          goto *labels[cast_u8(*(cur = end_ptr))];
-        }
+        l_identifier: // a - z A - Z _
+          goto *labels[cast_u8(*(cur = parse_identifier(cur, ctx)))];
 
         l_op_chars: // ! % * + - /
         l_punc_chars: // () [] : ; {}
-          emit({
-            .start = cur,
-            .type = static_cast<TokenType>(*cur)
-          });
-          goto *labels[cast_u8(*++cur)];
+          goto *labels[cast_u8(*(cur = parse_single_char(cur, ctx)))];
 
         l_digit_0: // 0
           start_ptr = cur++;
@@ -120,20 +94,14 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         l_string: // "
-          if (auto res = read_string(&cur[1], ctx.strings)) {
-            emit({
-              .str_idx = ctx.strings.size() - 1,
-              .start = cur,
-              .type = TokenType::T_LITERALS_STRING
-            });
-            cur = res.value();
-          } else [[unlikely]]
+          if (auto res = read_string(&cur[1], ctx, arena); !res.has_value()) [[unlikely]]
             return std::unexpected(
               LexError{
                 .err_text = std::string_view(cur, res.error()),
                 .type = LexErrorType::LET_UNTERMINATED_STRING
               }
             );
+          else cur = res.value();
           goto *labels[cast_u8(*cur)];
 
         { // = == < <= > >= ! !=
@@ -150,54 +118,15 @@ export namespace Tona {
         l_not:
           double_type = TokenType::T_OPERATORS_NEQ;
         check_double_type:
-          const char* const start_ptr = cur;
-          if (cur[1] == '=') {
-            cur += 2;
-            emit({
-              .start = start_ptr,
-              .type = double_type
-            });
-          } else {
-            cur++;
-            emit({
-              .start = start_ptr,
-              .type = static_cast<TokenType>(
-                static_cast<std::uint8_t>(double_type) - double_char_offset
-              )
-            });
-          }
+          goto *labels[cast_u8(*(cur = parse_double_char(cur, double_type, ctx)))];
         }
-          goto *labels[cast_u8(*cur)];
 
         l_div: // / // /* */
-          if (*++cur == '/') {
-            do {
-              cur++;
-            } while (*cur != '\n' && *cur != '\0');
-          } else if (*cur == '*') {
-            while (true) {
-              cur++;
-              if (*cur == '\0') [[unlikely]]
-                return std::unexpected(
-                  LexError{
-                    .err_text = std::string_view(cur, 1),
-                    .type = LexErrorType::LET_UNCLOSE_COMMENT
-                  }
-                );
-              if (*cur == '*' && cur[1] == '/')
-                break;
-            }
-            cur += 2;
-          } else {
-            emit({
-              .start = cur - 1,
-              .type = TokenType::T_OPERATORS_DIV
-            });
-          }
+          if (auto res = parse_div(cur, ctx)) [[likely]]
+            goto *labels[cast_u8(*(cur = res.value()))];
+          else
+            return std::unexpected(res.error());
 
-          goto *labels[cast_u8(*cur)];
-
-        // chu li float
         pn_bin_prefix:
           cur = consume_digit_sequence<
             bin_char
@@ -287,16 +216,100 @@ export namespace Tona {
 
           return ctx;
 
-        l_default: {
-          std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
-          len = (len == 0 || len > 4) ? 1 : len;
-          return std::unexpected(
-            LexError{
-              .err_text = std::string_view(cur, len),
-              .type = LexErrorType::LET_INVALID_CHAR
-            }
-          );
+        l_default:
+          return std::unexpected(parse_invalid_char(cur));
+      }
+
+    private:
+      [[nodiscard]] [[gnu::always_inline]] inline const char* skip_whitespace(const char* cur) noexcept {
+        do {
+          cur++;
+        } while (*cur == ' ' || *cur == '\t' || *cur == '\n');
+        return cur;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_identifier(const char* cur, TokenContext& ctx) noexcept {
+        const char* const end_ptr = identifier_char(cur);
+        std::string_view identifier(cur, end_ptr);
+        if (
+          auto res = find_keyword(identifier); 
+          res == TokenType::T_IDENTIFIER
+        ) ctx.tokens.push_back({
+            .text = {
+              .data = cur,
+              .len = identifier.size()
+            },
+            .start = cur,
+            .type = TokenType::T_IDENTIFIER
+          });
+        else ctx.tokens.push_back({
+          .start = cur,
+          .type = res
+        });
+        return end_ptr;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, LexError> parse_div(const char* cur, TokenContext& ctx) noexcept {
+        if (*++cur == '/') {
+          do {
+            cur++;
+          } while (*cur != '\n' && *cur != '\0');
+        } else if (*cur == '*') {
+          while (true) {
+            cur++;
+            if (*cur == '\0') [[unlikely]]
+              return std::unexpected(
+                LexError{
+                  .err_text = std::string_view(cur, 1),
+                  .type = LexErrorType::LET_UNCLOSE_COMMENT
+                }
+              );
+            if (*cur == '*' && cur[1] == '/')
+              break;
+          }
+          cur += 2;
+        } else ctx.tokens.push_back({
+            .start = cur - 1,
+            .type = TokenType::T_OPERATORS_DIV
+          });
+        return cur;
+      } 
+
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_single_char(const char* cur, TokenContext& ctx) noexcept {
+        ctx.tokens.push_back({
+          .start = cur,
+          .type = static_cast<TokenType>(*cur)
+        });
+        return cur + 1;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_double_char(const char* cur, TokenType double_type, TokenContext& ctx) noexcept {
+        const char* const start_ptr = cur;
+        if (cur[1] == '=') {
+          cur += 2;
+          ctx.tokens.push_back({
+            .start = start_ptr,
+            .type = double_type
+          });
+        } else {
+          cur++;
+          ctx.tokens.push_back({
+            .start = start_ptr,
+            .type = static_cast<TokenType>(
+              static_cast<std::uint8_t>(double_type) - double_char_offset
+            )
+          });
         }
+        return cur;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline LexError parse_invalid_char(const char* cur) noexcept {
+        std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
+        len = (len == 0 || len > 4) ? 1 : len;
+        return {
+          .err_text = std::string_view(cur, len),
+          .type = LexErrorType::LET_INVALID_CHAR
+        };
       }
 
     private:
@@ -318,7 +331,8 @@ export namespace Tona {
         return start;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, std::vector<std::string>& vec_str) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, TokenContext& ctx, Arena& arena) noexcept {
+        const char* const start_ptr = start - 1;
         const char* prev = start;
 
         while (true) {
@@ -357,10 +371,20 @@ export namespace Tona {
             const char* const end = start + 8 - size;
             while (start < end) {
               switch (*start) {
-                case '"' :
-                  vec_str.push_back(std::string(buffer.buffer<const char*>(), buffer.buf_size()));
+                case '"' : {
+                  char* arena_mem = static_cast<char*>(arena.allocate(buffer.buf_size(), 1));
+                  std::memcpy(arena_mem, buffer.buffer<const char*>(), buffer.buf_size());
+                  ctx.tokens.push_back({
+                    .text = {
+                      .data = arena_mem,
+                      .len = buffer.buf_size()
+                    },
+                    .start = start_ptr,
+                    .type = TokenType::T_LITERALS_STRING
+                  });
                   buffer.reset();
                   return start + 1;
+                }
                 case '\0':
                 case '\n':
                 case '\r': return std::unexpected(start);

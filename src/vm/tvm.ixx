@@ -23,134 +23,133 @@ export namespace Tona {
       VM& operator=(const VM&) = delete;
       VM (VM&&) = delete;
       VM& operator=(VM&&) = delete;
-      ~VM() = default;
 
-    VMErrorType run(const Instruction* ip) {
-      constexpr void* labels[] = {
-        #include "vm_label.inc"
-      };
+      VMErrorType run(const Instruction* ip) {
+        static constexpr void* labels[] = {
+          #include "vm_label.inc"
+        };
 
-      goto *labels[*ip];
+        goto *labels[*ip];
 
-      stk_alloc:       goto *labels[stk_alloc(++ip)];
-      stk_free:        goto *labels[stk_free(++ip)];
-      stk_ld_8u:       goto *labels[stk_load<std::uint8_t>(++ip)];
-      stk_ld_8s:       goto *labels[stk_load<std::int8_t>(++ip)];
-      stk_ld_16u:      goto *labels[stk_load<std::uint16_t>(++ip)];
-      stk_ld_16s:      goto *labels[stk_load<std::int16_t>(++ip)];
-      stk_ld_32u:      goto *labels[stk_load<std::uint32_t>(++ip)];
-      stk_ld_32s:      goto *labels[stk_load<std::int32_t>(++ip)];
-      stk_ld_64:       goto *labels[stk_load<std::uint64_t>(++ip)];
-      stk_st_8:        goto *labels[stk_store<std::uint8_t>(++ip)];
-      stk_st_16:       goto *labels[stk_store<std::uint16_t>(++ip)];
-      stk_st_32:       goto *labels[stk_store<std::uint32_t>(++ip)];
-      stk_st_64:       goto *labels[stk_store<std::uint64_t>(++ip)];
+        stk_alloc:       goto *labels[stk_alloc(++ip)];
+        stk_free:        goto *labels[stk_free(++ip)];
+        stk_ld_8u:       goto *labels[stk_load<std::uint8_t>(++ip)];
+        stk_ld_8s:       goto *labels[stk_load<std::int8_t>(++ip)];
+        stk_ld_16u:      goto *labels[stk_load<std::uint16_t>(++ip)];
+        stk_ld_16s:      goto *labels[stk_load<std::int16_t>(++ip)];
+        stk_ld_32u:      goto *labels[stk_load<std::uint32_t>(++ip)];
+        stk_ld_32s:      goto *labels[stk_load<std::int32_t>(++ip)];
+        stk_ld_64:       goto *labels[stk_load<std::uint64_t>(++ip)];
+        stk_st_8:        goto *labels[stk_store<std::uint8_t>(++ip)];
+        stk_st_16:       goto *labels[stk_store<std::uint16_t>(++ip)];
+        stk_st_32:       goto *labels[stk_store<std::uint32_t>(++ip)];
+        stk_st_64:       goto *labels[stk_store<std::uint64_t>(++ip)];
 
-      mem_alloc:       goto *labels[mem_alloc(++ip)];
-      mem_free:        goto *labels[mem_free(++ip)];
-      mem_ld_8u:       goto *labels[mem_load<std::uint8_t>(++ip)];
-      mem_ld_8s:       goto *labels[mem_load<std::int8_t>(++ip)];
-      mem_ld_16u:      goto *labels[mem_load<std::uint16_t>(++ip)];
-      mem_ld_16s:      goto *labels[mem_load<std::int16_t>(++ip)];
-      mem_ld_32u:      goto *labels[mem_load<std::uint32_t>(++ip)];
-      mem_ld_32s:      goto *labels[mem_load<std::int32_t>(++ip)];
-      mem_ld_64:       goto *labels[mem_load<std::uint64_t>(++ip)];
-      mem_st_8:        goto *labels[mem_store<std::uint8_t>(++ip)];
-      mem_st_16:       goto *labels[mem_store<std::uint16_t>(++ip)];
-      mem_st_32:       goto *labels[mem_store<std::uint32_t>(++ip)];
-      mem_st_64:       goto *labels[mem_store<std::uint64_t>(++ip)];
-      mem_cpy:         goto *labels[mem_cpy(++ip)];
-      mem_set:         goto *labels[mem_set(++ip)];
-      mem_cmp:         goto *labels[mem_cmp(++ip)];
+        mem_alloc:       goto *labels[mem_alloc(++ip)];
+        mem_free:        goto *labels[mem_free(++ip)];
+        mem_ld_8u:       goto *labels[mem_load<std::uint8_t>(++ip)];
+        mem_ld_8s:       goto *labels[mem_load<std::int8_t>(++ip)];
+        mem_ld_16u:      goto *labels[mem_load<std::uint16_t>(++ip)];
+        mem_ld_16s:      goto *labels[mem_load<std::int16_t>(++ip)];
+        mem_ld_32u:      goto *labels[mem_load<std::uint32_t>(++ip)];
+        mem_ld_32s:      goto *labels[mem_load<std::int32_t>(++ip)];
+        mem_ld_64:       goto *labels[mem_load<std::uint64_t>(++ip)];
+        mem_st_8:        goto *labels[mem_store<std::uint8_t>(++ip)];
+        mem_st_16:       goto *labels[mem_store<std::uint16_t>(++ip)];
+        mem_st_32:       goto *labels[mem_store<std::uint32_t>(++ip)];
+        mem_st_64:       goto *labels[mem_store<std::uint64_t>(++ip)];
+        mem_cpy:         goto *labels[mem_cpy(++ip)];
+        mem_set:         goto *labels[mem_set(++ip)];
+        mem_cmp:         goto *labels[mem_cmp(++ip)];
 
-      reg_move_8:      goto *labels[move<std::uint8_t>(++ip)];
-      reg_move_16:     goto *labels[move<std::uint16_t>(++ip)];
-      reg_move_32:     goto *labels[move<std::uint32_t>(++ip)];
-      reg_move_64:     goto *labels[move<std::uint64_t>(++ip)];
-      reg_swap:        goto *labels[swap(++ip)];
-      reg_ld_8u:       goto *labels[reg_load<std::uint8_t>(++ip)];
-      reg_ld_8s:       goto *labels[reg_load<std::int8_t>(++ip)];
-      reg_ld_16u:      goto *labels[reg_load<std::uint16_t>(++ip)];
-      reg_ld_16s:      goto *labels[reg_load<std::int16_t>(++ip)];
-      reg_ld_32u:      goto *labels[reg_load<std::uint32_t>(++ip)];
-      reg_ld_32s:      goto *labels[reg_load<std::int32_t>(++ip)];
-      reg_ld_64:       goto *labels[reg_load<std::uint64_t>(++ip)];
+        reg_move_8:      goto *labels[move<std::uint8_t>(++ip)];
+        reg_move_16:     goto *labels[move<std::uint16_t>(++ip)];
+        reg_move_32:     goto *labels[move<std::uint32_t>(++ip)];
+        reg_move_64:     goto *labels[move<std::uint64_t>(++ip)];
+        reg_swap:        goto *labels[swap(++ip)];
+        reg_ld_8u:       goto *labels[reg_load<std::uint8_t>(++ip)];
+        reg_ld_8s:       goto *labels[reg_load<std::int8_t>(++ip)];
+        reg_ld_16u:      goto *labels[reg_load<std::uint16_t>(++ip)];
+        reg_ld_16s:      goto *labels[reg_load<std::int16_t>(++ip)];
+        reg_ld_32u:      goto *labels[reg_load<std::uint32_t>(++ip)];
+        reg_ld_32s:      goto *labels[reg_load<std::int32_t>(++ip)];
+        reg_ld_64:       goto *labels[reg_load<std::uint64_t>(++ip)];
 
-      alu_cvt_64s_f64: goto *labels[cvt<std::int64_t, double>(++ip)];
-      alu_cvt_64u_f64: goto *labels[cvt<std::uint64_t, double>(++ip)];
-      alu_cvt_64s_f32: goto *labels[cvt<std::int64_t, float>(++ip)];
-      alu_cvt_64u_f32: goto *labels[cvt<std::uint64_t, float>(++ip)];
-      alu_cvt_f64_64s: goto *labels[cvt<double, std::int64_t>(++ip)];
-      alu_cvt_f64_64u: goto *labels[cvt<double, std::uint64_t>(++ip)];
-      alu_cvt_f32_64s: goto *labels[cvt<float, std::int64_t>(++ip)];
-      alu_cvt_f32_64u: goto *labels[cvt<float, std::uint64_t>(++ip)];
-      alu_cvt_f32_f64: goto *labels[cvt<float, double>(++ip)];
-      alu_cvt_8s_64s:  goto *labels[cvt<std::int8_t, std::int64_t>(++ip)];
-      alu_cvt_16s_64s: goto *labels[cvt<std::int16_t, std::int64_t>(++ip)];
-      alu_cvt_32s_64s: goto *labels[cvt<std::int32_t, std::int64_t>(++ip)];
-      alu_inc:         goto *labels[un_op<inc, std::uint64_t>(++ip)];
-      alu_dec:         goto *labels[un_op<dec, std::uint64_t>(++ip)];
-      alu_neg:         goto *labels[un_op<std::negate<>, std::uint64_t>(++ip)];
-      alu_neg_f32:     goto *labels[un_op<std::negate<>, float>(++ip)];
-      alu_neg_f64:     goto *labels[un_op<std::negate<>, double>(++ip)];
-      alu_add:         goto *labels[bin_op<std::plus<>, std::uint64_t>(++ip)];
-      alu_add_f32:     goto *labels[bin_op<std::plus<>, float>(++ip)];
-      alu_add_f64:     goto *labels[bin_op<std::plus<>, double>(++ip)];
-      alu_sub:         goto *labels[bin_op<std::minus<>, std::uint64_t>(++ip)];
-      alu_sub_f32:     goto *labels[bin_op<std::minus<>, float>(++ip)];
-      alu_sub_f64:     goto *labels[bin_op<std::minus<>, double>(++ip)];
-      alu_mul:         goto *labels[bin_op<std::multiplies<>, std::uint64_t>(++ip)];
-      alu_mul_f32:     goto *labels[bin_op<std::multiplies<>, float>(++ip)];
-      alu_mul_f64:     goto *labels[bin_op<std::multiplies<>, double>(++ip)];
-      alu_div_u:       goto *labels[bin_op<std::divides<>, std::uint64_t>(++ip)];
-      alu_div_s:       goto *labels[bin_op<std::divides<>, std::int64_t>(++ip)];
-      alu_div_f32:     goto *labels[bin_op<std::divides<>, float>(++ip)];
-      alu_div_f64:     goto *labels[bin_op<std::divides<>, double>(++ip)];
-      alu_mod_u:       goto *labels[bin_op<std::modulus<>, std::uint64_t>(++ip)];
-      alu_mod_s:       goto *labels[bin_op<std::modulus<>, std::int64_t>(++ip)];
-      alu_and:         goto *labels[bin_op<std::bit_and<>, std::uint64_t>(++ip)];
-      alu_or:          goto *labels[bin_op<std::bit_or<>, std::uint64_t>(++ip)];
-      alu_xor:         goto *labels[bin_op<std::bit_xor<>, std::uint64_t>(++ip)];
-      alu_not:         goto *labels[un_op<std::bit_not<>, std::uint64_t>(++ip)];
-      alu_shl:         goto *labels[bin_op<bit_shift_left, std::uint64_t>(++ip)];
-      alu_shr:         goto *labels[bin_op<bit_shift_right, std::uint64_t>(++ip)];
-      alu_sar:         goto *labels[bin_op<bit_shift_right, std::int64_t>(++ip)];
+        alu_cvt_64s_f64: goto *labels[cvt<std::int64_t, double>(++ip)];
+        alu_cvt_64u_f64: goto *labels[cvt<std::uint64_t, double>(++ip)];
+        alu_cvt_64s_f32: goto *labels[cvt<std::int64_t, float>(++ip)];
+        alu_cvt_64u_f32: goto *labels[cvt<std::uint64_t, float>(++ip)];
+        alu_cvt_f64_64s: goto *labels[cvt<double, std::int64_t>(++ip)];
+        alu_cvt_f64_64u: goto *labels[cvt<double, std::uint64_t>(++ip)];
+        alu_cvt_f32_64s: goto *labels[cvt<float, std::int64_t>(++ip)];
+        alu_cvt_f32_64u: goto *labels[cvt<float, std::uint64_t>(++ip)];
+        alu_cvt_f32_f64: goto *labels[cvt<float, double>(++ip)];
+        alu_cvt_8s_64s:  goto *labels[cvt<std::int8_t, std::int64_t>(++ip)];
+        alu_cvt_16s_64s: goto *labels[cvt<std::int16_t, std::int64_t>(++ip)];
+        alu_cvt_32s_64s: goto *labels[cvt<std::int32_t, std::int64_t>(++ip)];
+        alu_inc:         goto *labels[un_op<inc, std::uint64_t>(++ip)];
+        alu_dec:         goto *labels[un_op<dec, std::uint64_t>(++ip)];
+        alu_neg:         goto *labels[un_op<std::negate<>, std::uint64_t>(++ip)];
+        alu_neg_f32:     goto *labels[un_op<std::negate<>, float>(++ip)];
+        alu_neg_f64:     goto *labels[un_op<std::negate<>, double>(++ip)];
+        alu_add:         goto *labels[bin_op<std::plus<>, std::uint64_t>(++ip)];
+        alu_add_f32:     goto *labels[bin_op<std::plus<>, float>(++ip)];
+        alu_add_f64:     goto *labels[bin_op<std::plus<>, double>(++ip)];
+        alu_sub:         goto *labels[bin_op<std::minus<>, std::uint64_t>(++ip)];
+        alu_sub_f32:     goto *labels[bin_op<std::minus<>, float>(++ip)];
+        alu_sub_f64:     goto *labels[bin_op<std::minus<>, double>(++ip)];
+        alu_mul:         goto *labels[bin_op<std::multiplies<>, std::uint64_t>(++ip)];
+        alu_mul_f32:     goto *labels[bin_op<std::multiplies<>, float>(++ip)];
+        alu_mul_f64:     goto *labels[bin_op<std::multiplies<>, double>(++ip)];
+        alu_div_u:       goto *labels[bin_op<std::divides<>, std::uint64_t>(++ip)];
+        alu_div_s:       goto *labels[bin_op<std::divides<>, std::int64_t>(++ip)];
+        alu_div_f32:     goto *labels[bin_op<std::divides<>, float>(++ip)];
+        alu_div_f64:     goto *labels[bin_op<std::divides<>, double>(++ip)];
+        alu_mod_u:       goto *labels[bin_op<std::modulus<>, std::uint64_t>(++ip)];
+        alu_mod_s:       goto *labels[bin_op<std::modulus<>, std::int64_t>(++ip)];
+        alu_and:         goto *labels[bin_op<std::bit_and<>, std::uint64_t>(++ip)];
+        alu_or:          goto *labels[bin_op<std::bit_or<>, std::uint64_t>(++ip)];
+        alu_xor:         goto *labels[bin_op<std::bit_xor<>, std::uint64_t>(++ip)];
+        alu_not:         goto *labels[un_op<std::bit_not<>, std::uint64_t>(++ip)];
+        alu_shl:         goto *labels[bin_op<bit_shift_left, std::uint64_t>(++ip)];
+        alu_shr:         goto *labels[bin_op<bit_shift_right, std::uint64_t>(++ip)];
+        alu_sar:         goto *labels[bin_op<bit_shift_right, std::int64_t>(++ip)];
 
-      ctrl_jmp:        goto *labels[jmp(++ip)];
-      ctrl_jmpo:       goto *labels[jmpo(++ip)];
-      ctrl_jz:         goto *labels[jump_zero<std::equal_to<>, std::uint64_t>(++ip)];
-      ctrl_jnz:        goto *labels[jump_zero<std::not_equal_to<>, std::uint64_t>(++ip)];
-      ctrl_je:         goto *labels[jump<std::equal_to<>, std::uint64_t>(++ip)];
-      ctrl_jne:        goto *labels[jump<std::not_equal_to<>, std::uint64_t>(++ip)];
-      ctrl_jl:         goto *labels[jump<std::less<>, std::int64_t>(++ip)];
-      ctrl_jle:        goto *labels[jump<std::less_equal<>, std::int64_t>(++ip)];
-      ctrl_jb:         goto *labels[jump<std::less<>, std::uint64_t>(++ip)];
-      ctrl_jbe:        goto *labels[jump<std::less_equal<>, std::uint64_t>(++ip)];
-      ctrl_je_f32:     goto *labels[jump<std::equal_to<>, float>(++ip)];
-      ctrl_jne_f32:    goto *labels[jump<std::not_equal_to<>, float>(++ip)];
-      ctrl_jl_f32:     goto *labels[jump<std::less<>, float>(++ip)];
-      ctrl_jle_f32:    goto *labels[jump<std::less_equal<>, float>(++ip)];
-      ctrl_je_f64:     goto *labels[jump<std::equal_to<>, double>(++ip)];
-      ctrl_jne_f64:    goto *labels[jump<std::not_equal_to<>, double>(++ip)];
-      ctrl_jl_f64:     goto *labels[jump<std::less<>, double>(++ip)];
-      ctrl_jle_f64:    goto *labels[jump<std::less_equal<>, double>(++ip)];
-      ctrl_inc_jne:    goto *labels[inc_jne<std::uint64_t>(++ip)];
-      ctrl_dec_jnz:    goto *labels[dec_jnz<std::uint64_t>(++ip)];
-      ctrl_call:       goto *labels[call(++ip)];
-      ctrl_ret:        goto *labels[ret(ip)];
+        ctrl_jmp:        goto *labels[jmp(++ip)];
+        ctrl_jmpo:       goto *labels[jmpo(++ip)];
+        ctrl_jz:         goto *labels[jump_zero<std::equal_to<>, std::uint64_t>(++ip)];
+        ctrl_jnz:        goto *labels[jump_zero<std::not_equal_to<>, std::uint64_t>(++ip)];
+        ctrl_je:         goto *labels[jump<std::equal_to<>, std::uint64_t>(++ip)];
+        ctrl_jne:        goto *labels[jump<std::not_equal_to<>, std::uint64_t>(++ip)];
+        ctrl_jl:         goto *labels[jump<std::less<>, std::int64_t>(++ip)];
+        ctrl_jle:        goto *labels[jump<std::less_equal<>, std::int64_t>(++ip)];
+        ctrl_jb:         goto *labels[jump<std::less<>, std::uint64_t>(++ip)];
+        ctrl_jbe:        goto *labels[jump<std::less_equal<>, std::uint64_t>(++ip)];
+        ctrl_je_f32:     goto *labels[jump<std::equal_to<>, float>(++ip)];
+        ctrl_jne_f32:    goto *labels[jump<std::not_equal_to<>, float>(++ip)];
+        ctrl_jl_f32:     goto *labels[jump<std::less<>, float>(++ip)];
+        ctrl_jle_f32:    goto *labels[jump<std::less_equal<>, float>(++ip)];
+        ctrl_je_f64:     goto *labels[jump<std::equal_to<>, double>(++ip)];
+        ctrl_jne_f64:    goto *labels[jump<std::not_equal_to<>, double>(++ip)];
+        ctrl_jl_f64:     goto *labels[jump<std::less<>, double>(++ip)];
+        ctrl_jle_f64:    goto *labels[jump<std::less_equal<>, double>(++ip)];
+        ctrl_inc_jne:    goto *labels[inc_jne<std::uint64_t>(++ip)];
+        ctrl_dec_jnz:    goto *labels[dec_jnz<std::uint64_t>(++ip)];
+        ctrl_call:       goto *labels[call(++ip)];
+        ctrl_ret:        goto *labels[ret(ip)];
 
-      debug_printg:    goto *labels[dprint(++ip)];
-      debug_prints:    goto *labels[sprint(++ip)];
-      debug_printgs:   goto *labels[dprints(++ip)];
-      debug_dumpstk:   goto *labels[dumpstk(++ip)];
-      debug_dumpmem:   goto *labels[dumpmem(++ip)];
+        debug_printg:    goto *labels[dprint(++ip)];
+        debug_prints:    goto *labels[sprint(++ip)];
+        debug_printgs:   goto *labels[dprints(++ip)];
+        debug_dumpstk:   goto *labels[dumpstk(++ip)];
+        debug_dumpmem:   goto *labels[dumpmem(++ip)];
 
-      sys_abort:
-        code = static_cast<VMErrorType>(reg(*++ip));
+        sys_abort:
+          code = static_cast<VMErrorType>(reg(*++ip));
 
-      sys_exit:
-        return code;
-    }
+        sys_exit:
+          return code;
+      }
 
     private:
       template <typename Op, typename T>
@@ -284,9 +283,9 @@ export namespace Tona {
 
       [[nodiscard]] std::uint8_t mem_free(const Instruction*& ip) {
         const auto& A = reg(*ip);
-        if (auto ec = mem.free(A); ec != HeapErrorType::HET_NONE) {
-
-        }
+        code = mem.free(A);
+        if (code != VMErrorType::VMET_NONE) [[unlikely]]
+          return cast_u8(OpCode::OC_SYS_EXIT);
         return *++ip;
       }
 
@@ -384,6 +383,9 @@ export namespace Tona {
       }
 
       [[nodiscard]] std::uint8_t dumpstk(const Instruction*& ip) {
+        /*
+        
+        */
         return *ip;
       }
 
@@ -396,9 +398,6 @@ export namespace Tona {
 
     private:
       [[nodiscard]] [[gnu::always_inline]] inline Register& reg(const Instruction i) noexcept {
-        /*
-        
-        */
         return regs.get()[rb + i];
       }
 

@@ -57,7 +57,7 @@ export namespace Tona {
       }
 
       std::string_view text(std::size_t file_idx) const {
-        assert(file_idx >= path_files.size());
+        assert(file_idx < path_files.size());
         return text_files[file_idx];
       }
 

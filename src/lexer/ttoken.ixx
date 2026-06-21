@@ -150,20 +150,16 @@ export namespace Tona {
   }
 
   struct alignas(8) Token {
-    union {
-      struct {
-        const char* data;
-        std::size_t len;
-      } text;
-      std::size_t str_idx;
-    };
+    struct {
+      const char* data;
+      std::size_t len;
+    } text;
     const char* start;
     TokenType type;
   };
 
   struct TokenContext {
-    std::vector<Token> tokens;
-    std::vector<std::string> strings;
+    std::pmr::vector<Token> tokens;
     std::size_t path_idx;
   };
 }

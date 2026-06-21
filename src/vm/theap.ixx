@@ -56,26 +56,26 @@ export namespace Tona {
         return alloc_large(alloc_size);
       }
 
-      [[nodiscard]] HeapErrorType free(const std::size_t ptr) {
+      [[nodiscard]] VMErrorType free(const std::size_t ptr) {
         if (ptr < hb)
-          return HeapErrorType::HET_CONSTANT_FREE;
+          return VMErrorType::VMET_CONSTANT_FREE;
         const std::size_t pidx = (ptr - hb) / page_bytes;
         if (pidx >= page_meta.size())
-          return HeapErrorType::HET_UNKNOW_FREE;
+          return VMErrorType::VMET_UNKNOW_FREE;
         auto& meta = page_meta[pidx];
         if (meta.cls == page_free)
-          return HeapErrorType::HET_DOUBLE_FREE;
+          return VMErrorType::VMET_DOUBLE_FREE;
         if (meta.cls == page_large_body)
-          return HeapErrorType::HET_UNKNOW_FREE;
+          return VMErrorType::VMET_UNKNOW_FREE;
         if (meta.cls == page_large_head) {
           free_large(pidx, meta.span_pages);
-          return HeapErrorType::HET_NONE;
+          return VMErrorType::VMET_NONE;
         }
         const std::size_t page_start = hb + pidx * page_bytes;
         if ((ptr - page_start) % heap_cls[meta.cls] != 0)
-          return HeapErrorType::HET_UNKNOW_FREE;
+          return VMErrorType::VMET_UNKNOW_FREE;
         free_small(ptr, pidx, meta);
-        return HeapErrorType::HET_NONE;
+        return VMErrorType::VMET_NONE;
       }
 
       [[nodiscard]] const auto data() const noexcept {
