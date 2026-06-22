@@ -21,7 +21,10 @@ export namespace Tona {
         Lexer lex{};
         std::size_t file_idx = sf.registry_file(file_path);
         Arena arena(4096);
+        auto start = std::chrono::high_resolution_clock::now();
         auto token_ctx = lex.tokenize(sf.text(file_idx), arena);
+        auto end = std::chrono::high_resolution_clock::now();
+        std::println("time: {}", std::chrono::duration_cast<std::chrono::microseconds>(end - start));
         if (!token_ctx.has_value())
           diag.print_lex_err(file_idx, token_ctx.error(), sf);
         print_token(token_ctx.value());

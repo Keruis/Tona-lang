@@ -18,11 +18,6 @@ export namespace Tona {
         };
 
         const char* cur = text.data();
-
-        auto emit = [&][[gnu::always_inline]](Token&& tok) {
-          ctx.tokens.push_back(std::move(tok));
-        };
-
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
 
@@ -81,7 +76,7 @@ export namespace Tona {
             default:
               if (is_identifier_char(*cur)) [[unlikely]]
                 goto pn_error;
-              emit({
+              ctx.tokens.push_back({
                 .text = {
                   .data = start_ptr, 
                   .len = cast_usize(cur - start_ptr)
@@ -188,7 +183,7 @@ export namespace Tona {
           while (is_dec_char(*cur))
             cur++;
         pn_save:
-          emit({
+          ctx.tokens.push_back({
             .text = {
               .data = start_ptr, 
               .len = cast_usize(cur - start_ptr)
@@ -209,7 +204,7 @@ export namespace Tona {
           );
 
         l_end:
-          emit({
+          ctx.tokens.push_back({
             .start = cur,
             .type = TokenType::T_END
           });
@@ -303,7 +298,7 @@ export namespace Tona {
         return cur;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline LexError parse_invalid_char(const char* cur) noexcept {
+      [[nodiscard]] LexError parse_invalid_char(const char* cur) noexcept {
         std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
         len = (len == 0 || len > 4) ? 1 : len;
         return {

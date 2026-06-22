@@ -130,22 +130,31 @@ export namespace Tona {
 
   constexpr std::size_t keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
 
-  const std::flat_map<std::string_view, TokenType> keywords {
-    {"var", TokenType::T_KEYWORD_VAR},
-    {"if", TokenType::T_KEYWORD_IF},
-    {"else", TokenType::T_KEYWORD_ELSE},
-    {"fn", TokenType::T_KEYWORD_FUN},
-    {"for", TokenType::T_KEYWORD_FOR},
-    {"true", TokenType::T_KEYWORD_TRUE},
-    {"false", TokenType::T_KEYWORD_FALSE},
-    {"return", TokenType::T_KEYWORD_RETURN}
-  };
-
-  TokenType find_keyword(std::string_view text) {
-    if (
-      auto it = keywords.find(text); 
-      it != keywords.end()
-    ) return it->second;
+  [[nodiscard]] constexpr TokenType find_keyword(std::string_view text) noexcept {
+    switch (text.size()) {
+      case 2: {
+        if (text == "if") return TokenType::T_KEYWORD_IF;
+        if (text == "fn") return TokenType::T_KEYWORD_FUN;
+        break;
+      }
+      case 3: {
+        if (text == "var") return TokenType::T_KEYWORD_VAR;
+        if (text == "for") return TokenType::T_KEYWORD_FOR;
+        break;
+      }
+      case 4: {
+        if (text == "else") return TokenType::T_KEYWORD_ELSE;
+        if (text == "true") return TokenType::T_KEYWORD_TRUE;
+        break;
+      }
+      case 5: {
+        if (text == "false") return TokenType::T_KEYWORD_FALSE;
+        break;
+      }
+      case 6: {
+        if (text == "return") return TokenType::T_KEYWORD_RETURN;
+      }
+    }
     return TokenType::T_IDENTIFIER;
   }
 
