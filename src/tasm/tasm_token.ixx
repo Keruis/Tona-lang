@@ -7,6 +7,8 @@ import tona.opcode;
 export namespace Tona {
 
   enum class AsmTokenType : std::uint8_t {
+    ATT_DATA,
+    ATT_TEXT,
     ATT_LABEL,
     ATT_OPCODE,
     ATT_REG,
