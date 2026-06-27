@@ -35,6 +35,34 @@ export namespace Tona {
       return std::countr_zero(msb) >> 3;
   }
 
+  [[nodiscard]] [[gnu::always_inline]] inline const char* skip_whitespace(const char* cur) noexcept {
+    cur++;
+
+    while (true) {
+      std::uint64_t chunk_bytes;
+      std::memcpy(&chunk_bytes, cur, 8);
+
+      const std::uint64_t raw_7bit_bytes = chunk_bytes & SWAR64::clear_msb_mask;
+
+      const std::uint64_t space_diff   = raw_7bit_bytes ^ SWAR64::char_mask<' '>;
+      const std::uint64_t tab_diff     = raw_7bit_bytes ^ SWAR64::char_mask<'\t'>;
+      const std::uint64_t newline_diff = raw_7bit_bytes ^ SWAR64::char_mask<'\n'>;
+
+      const std::uint64_t space_valid = SWAR64::msb_only_mask - space_diff;
+      const std::uint64_t tab_valid = SWAR64::msb_only_mask - tab_diff;
+      const std::uint64_t newline_valid = SWAR64::msb_only_mask - newline_diff;
+
+      const std::uint64_t vaild_msb = ~(space_valid | tab_valid | newline_valid);
+
+      std::uint64_t final_invalid_flags = (vaild_msb | chunk_bytes) & SWAR64::msb_only_mask;
+
+      if (final_invalid_flags) [[likely]]
+        return cur + match_offset(final_invalid_flags);
+      
+      cur += 8;
+    }
+  }
+
   [[nodiscard]] [[gnu::always_inline]] inline bool is_identifier_char(char c) noexcept {
     constexpr auto table = []{
       std::array<bool, 256> t{};

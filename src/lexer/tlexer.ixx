@@ -29,16 +29,20 @@ export namespace Tona {
         
         l_skip: // ' '
         l_newline: // '\n'
+        asm("#skip");
           goto *labels[cast_u8(*(cur = skip_whitespace(cur)))];
           
         l_identifier: // a - z A - Z _
+        asm("#identifier");
           goto *labels[cast_u8(*(cur = parse_identifier(cur, ctx)))];
 
         l_op_chars: // ! % * + - /
         l_punc_chars: // () [] : ; {}
+        asm("#oppunc");
           goto *labels[cast_u8(*(cur = parse_single_char(cur, ctx)))];
 
         l_digit_0: // 0
+        asm("#digit0");
           start_ptr = cur++;
           switch (*cur) {
             case 'b' :
@@ -52,6 +56,7 @@ export namespace Tona {
           }
           
         l_digit_1_9: // 1 - 9
+        asm("#digit19");
           start_ptr = cur++;
           cur = consume_digit_sequence<
             is_dec_char
@@ -89,6 +94,7 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         l_string: // "
+        asm("#string");
           if (auto res = read_string(&cur[1], ctx, arena); !res.has_value()) [[unlikely]]
             return std::unexpected(
               LexError{
@@ -100,6 +106,7 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         { // = == < <= > >= ! !=
+        asm("#//");
           TokenType double_type;
         l_assign:
           double_type = TokenType::T_OPERATORS_EQ;
@@ -117,6 +124,7 @@ export namespace Tona {
         }
 
         l_div: // / // /* */
+        asm("#div");
           if (auto res = parse_div(cur, ctx)) [[likely]]
             goto *labels[cast_u8(*(cur = res.value()))];
           else
@@ -216,13 +224,6 @@ export namespace Tona {
       }
 
     private:
-      [[nodiscard]] [[gnu::always_inline]] inline const char* skip_whitespace(const char* cur) noexcept {
-        do {
-          cur++;
-        } while (*cur == ' ' || *cur == '\t' || *cur == '\n');
-        return cur;
-      }
-
       [[nodiscard]] [[gnu::always_inline]] inline const char* parse_identifier(const char* cur, TokenContext& ctx) noexcept {
         const char* const end_ptr = identifier_char(cur);
         std::string_view identifier(cur, end_ptr);

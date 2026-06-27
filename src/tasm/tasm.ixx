@@ -23,8 +23,8 @@ export namespace Tona {
     private:
       /*
         section data
-          msg<byte>{"Hello, World[s:%d]\n", 0}
-          len<imm>{sizeof(msg)}
+          msg<byte>{"Hello, World[s:%d]", 0}
+          len<imm>{$ - msg}
         
         section text
         main:
