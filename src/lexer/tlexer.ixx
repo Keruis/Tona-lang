@@ -347,6 +347,8 @@ export namespace Tona {
                   buf_ptr = start_ptr;
                   len = start - start_ptr;
                 } else {
+                  if (start > prev_ptr)
+                    buffer.stuff_back(prev_ptr, start - prev_ptr);
                   buf_ptr = buffer.buffer<const char*>();
                   len = buffer.buf_size();
                 }
@@ -369,7 +371,8 @@ export namespace Tona {
               switch (*start) {
                 case '\\': {
                   char cur = 0;
-                  switch (*++start) {
+                  start += 2;
+                  switch (start[-1]) {
                     case 'n': cur = '\n'; break;
                     case 'r': cur = '\r'; break;
                     case 't': cur = '\t'; break;
@@ -377,7 +380,7 @@ export namespace Tona {
                     case 'f': cur = '\f'; break;
                     case 'v': cur = '\v'; break;
                     case 'a': cur = '\a'; break;
-                    case 'x': start++;
+                    case 'x':
                       for (std::size_t i = 0; i < 2 && is_hex_char(*start); i++, start++) {
                         cur = cur * 16 + (
                           (*start <= '9') ? 
@@ -395,12 +398,13 @@ export namespace Tona {
                       } else cur = *start++;
                   }
                   buffer.stuff_back(cur);
+                  break;
                 }
                 [[unlikely]] case '\0':
                 [[unlikely]] case '\n':
                 [[unlikely]] case '\r': return std::unexpected(start);
                 default:
-                  buffer.stuff_back(*start);
+                  buffer.stuff_back(*start++);
               }
             }
             prev_ptr = start;
