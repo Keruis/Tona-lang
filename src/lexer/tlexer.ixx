@@ -391,6 +391,7 @@ export namespace Tona {
                       break;
 
                     default:
+                      start--;
                       if (std::size_t i = 2; is_oct_char(*start)) {
                         do {
                           cur = cur * 8 + (*start++ - '0');
@@ -406,8 +407,9 @@ export namespace Tona {
                 default:
                   buffer.stuff_back(*start++);
               }
+
+              prev_ptr = start;
             }
-            prev_ptr = start;
           } else start += 8;
         }
       }
