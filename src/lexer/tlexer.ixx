@@ -318,7 +318,7 @@ export namespace Tona {
         return start;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, TokenContext& ctx, Arena& arena) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, TokenContext& ctx, Arena& arena) {
         const char* const start_ptr = start;
         const char* prev_ptr = start;
 
@@ -389,7 +389,6 @@ export namespace Tona {
                         );
                       }
                       break;
-
                     default:
                       start--;
                       if (std::size_t i = 2; is_oct_char(*start)) {
