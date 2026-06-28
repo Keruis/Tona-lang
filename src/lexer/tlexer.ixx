@@ -27,22 +27,18 @@ export namespace Tona {
 
         goto *labels[cast_u8(*cur)];
         
-        l_skip: // ' '
-        l_newline: // '\n'
-        asm("#skip");
+        l_skip:
+        l_newline:
           goto *labels[cast_u8(*(cur = skip_whitespace(cur)))];
           
-        l_identifier: // a - z A - Z _
-        asm("#identifier");
+        l_identifier:
           goto *labels[cast_u8(*(cur = parse_identifier(cur, ctx)))];
 
-        l_op_chars: // ! % * + - /
-        l_punc_chars: // () [] : ; {}
-        asm("#oppunc");
+        l_op_chars:
+        l_punc_chars:
           goto *labels[cast_u8(*(cur = parse_single_char(cur, ctx)))];
 
-        l_digit_0: // 0
-        asm("#digit0");
+        l_digit_0:
           start_ptr = cur++;
           switch (*cur) {
             case 'b' :
@@ -55,8 +51,7 @@ export namespace Tona {
               goto check_numeric_suffix;
           }
           
-        l_digit_1_9: // 1 - 9
-        asm("#digit19");
+        l_digit_1_9:
           start_ptr = cur++;
           cur = consume_digit_sequence<
             is_dec_char
@@ -93,8 +88,7 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
 
-        l_string: // "
-        asm("#string");
+        l_string:
           if (auto res = read_string(&cur[1], ctx, arena); !res.has_value()) [[unlikely]]
             return std::unexpected(
               LexError{
@@ -105,8 +99,7 @@ export namespace Tona {
           else cur = res.value();
           goto *labels[cast_u8(*cur)];
 
-        { // = == < <= > >= ! !=
-        asm("#//");
+        {
           TokenType double_type;
         l_assign:
           double_type = TokenType::T_OPERATORS_EQ;
@@ -123,8 +116,7 @@ export namespace Tona {
           goto *labels[cast_u8(*(cur = parse_double_char(cur, double_type, ctx)))];
         }
 
-        l_div: // / // /* */
-        asm("#div");
+        l_div:
           if (auto res = parse_div(cur, ctx)) [[likely]]
             goto *labels[cast_u8(*(cur = res.value()))];
           else
@@ -224,9 +216,8 @@ export namespace Tona {
       }
 
     private:
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_identifier(const char* cur, TokenContext& ctx) noexcept {
-        const char* const end_ptr = identifier_char(cur);
-        std::string_view identifier(cur, end_ptr);
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_identifier(const char* cur, TokenContext& ctx) {
+        std::string_view identifier(cur, identifier_char(cur));
         if (
           auto res = find_keyword(identifier); 
           res == TokenType::T_IDENTIFIER
@@ -242,7 +233,7 @@ export namespace Tona {
           .start = cur,
           .type = res
         });
-        return end_ptr;
+        return identifier.cend();
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, LexError> parse_div(const char* cur, TokenContext& ctx) noexcept {
@@ -316,7 +307,7 @@ export namespace Tona {
             if (PredFunc(*start))
               start++;
             else if (*start == '\'' && PredFunc(start[1]))
-              start+=2;
+              start += 2;
             else break;
           }
         } else if constexpr (requires (FT f) {
@@ -328,65 +319,56 @@ export namespace Tona {
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, TokenContext& ctx, Arena& arena) noexcept {
-        const char* const start_ptr = start - 1;
-        const char* prev = start;
+        const char* const start_ptr = start;
+        const char* prev_ptr = start;
 
         while (true) {
           std::uint64_t chunk_bytes;
           std::memcpy(&chunk_bytes, start, 8);
 
-          const std::uint64_t quote_match        = chunk_bytes ^ SWAR64::char_mask<'"'>;
-          const std::uint64_t escape_match       = chunk_bytes ^ SWAR64::char_mask<'\\'>;
-          const std::uint64_t carriage_match     = chunk_bytes ^ SWAR64::char_mask<'\r'>;
-          const std::uint64_t newline_match      = chunk_bytes ^ SWAR64::char_mask<'\n'>;
+          const std::uint64_t ctrl_diff   = chunk_bytes - SWAR64::char_mask<0x20>;
+          const std::uint64_t quote_diff  = chunk_bytes ^ SWAR64::char_mask<'"'>;
+          const std::uint64_t escape_diff = chunk_bytes ^ SWAR64::char_mask<'\\'>;
 
-          const std::uint64_t null_minus_one     = chunk_bytes - SWAR64::all_bytes_one;
-          const std::uint64_t quote_minus_one    = quote_match - SWAR64::all_bytes_one;
-          const std::uint64_t escape_minus_one   = escape_match - SWAR64::all_bytes_one;
-          const std::uint64_t carriage_minus_one = carriage_match - SWAR64::all_bytes_one;
-          const std::uint64_t newline_minus_one  = newline_match - SWAR64::all_bytes_one;
+          const std::uint64_t quote_minus_one  = quote_diff - SWAR64::all_bytes_one;
+          const std::uint64_t escape_minus_one = escape_diff - SWAR64::all_bytes_one;
 
-          const std::uint64_t null_inverse       = ~chunk_bytes;
-          const std::uint64_t quote_inverse      = ~quote_match;
-          const std::uint64_t escape_inverse     = ~escape_match;
-          const std::uint64_t carriage_inverse   = ~carriage_match;
-          const std::uint64_t newline_inverse    = ~newline_match;
-
-          const std::uint64_t null_msb_match     = null_minus_one & null_inverse;
-          const std::uint64_t quote_msb_match    = quote_minus_one & quote_inverse;
-          const std::uint64_t escape_msb_match   = escape_minus_one & escape_inverse;
-          const std::uint64_t carriage_msb_match = carriage_minus_one & carriage_inverse;
-          const std::uint64_t newline_msb_match  = newline_minus_one & newline_inverse;
-
-          const std::uint64_t final_invalid_flags = (null_msb_match | quote_msb_match | escape_msb_match | carriage_msb_match | newline_msb_match) & SWAR64::msb_only_mask;
+          const std::uint64_t final_invalid_flags = (ctrl_diff | quote_minus_one | escape_minus_one) & ~chunk_bytes & SWAR64::msb_only_mask;
 
           if (final_invalid_flags) [[unlikely]] {
-            const std::size_t size = match_offset(final_invalid_flags);
-            start += size;
-            buffer.stuff_back(prev, start - prev);
-            const char* const end = start + 8 - size;
-            while (start < end) {
-              switch (*start) {
-                case '"' : {
-                  char* arena_mem = static_cast<char*>(arena.allocate(buffer.buf_size(), 1));
-                  std::memcpy(arena_mem, buffer.buffer<const char*>(), buffer.buf_size());
-                  ctx.tokens.push_back({
-                    .text = {
-                      .data = arena_mem,
-                      .len = buffer.buf_size()
-                    },
-                    .start = start_ptr,
-                    .type = TokenType::T_LITERALS_STRING
-                  });
-                  buffer.reset();
-                  return start + 1;
+            const char* end_ptr = start + 8;
+            const std::size_t offset = match_offset(final_invalid_flags);
+            start += offset;
+            while (start < end_ptr) {
+              if (*start == '"') [[likely]] {
+                const char* buf_ptr;
+                std::size_t len;
+                if (!buffer.buf_size()) [[likely]] {
+                  buf_ptr = start_ptr;
+                  len = start - start_ptr;
+                } else {
+                  buf_ptr = buffer.buffer<const char*>();
+                  len = buffer.buf_size();
                 }
-                case '\0':
-                case '\n':
-                case '\r': return std::unexpected(start);
+                char* arena_mem = static_cast<char*>(arena.allocate(len, 1));
+                std::memcpy(arena_mem, buf_ptr, len);
+                ctx.tokens.push_back({
+                  .text = {
+                    .data = arena_mem,
+                    .len = len
+                  },
+                  .start = start_ptr,
+                  .type = TokenType::T_LITERALS_STRING
+                });
+                buffer.reset();
+                return start + 1;
+              }
+
+              buffer.stuff_back(prev_ptr, start - prev_ptr);
+
+              switch (*start) {
                 case '\\': {
-                  const char* escape_ptr = start;
-                  std::uint8_t cur = 0;
+                  char cur = 0;
                   switch (*++start) {
                     case 'n': cur = '\n'; break;
                     case 'r': cur = '\r'; break;
@@ -396,37 +378,35 @@ export namespace Tona {
                     case 'v': cur = '\v'; break;
                     case 'a': cur = '\a'; break;
                     case 'x': start++;
-                      for (std::size_t i = 0; i < 2 && is_hex_char(*start); i++) {
+                      for (std::size_t i = 0; i < 2 && is_hex_char(*start); i++, start++) {
                         cur = cur * 16 + (
                           (*start <= '9') ? 
                           (*start -  '0') : 
                           ((*start | 0x20) - 'a' + 10)
                         );
-                        start++;
                       }
                       break;
 
                     default:
-                      if (!is_oct_char(*start)) {
-                        cur = *start++;
-                        break;
-                      }
-                      for (std::size_t i = 0; i < 3 && is_oct_char(*start); i++) {
-                        cur = cur * 8 + (*start - '0');
-                        start++;
-                      }
+                      if (std::size_t i = 2; is_oct_char(*start)) {
+                        do {
+                          cur = cur * 8 + (*start++ - '0');
+                        } while (i-- && is_oct_char(*start));
+                      } else cur = *start++;
                   }
                   buffer.stuff_back(cur);
-                  break;
                 }
+                [[unlikely]] case '\0':
+                [[unlikely]] case '\n':
+                [[unlikely]] case '\r': return std::unexpected(start);
                 default:
-                  buffer.stuff_back(*start++);
-              }        
+                  buffer.stuff_back(*start);
+              }
             }
-            prev = start;
+            prev_ptr = start;
           } else start += 8;
         }
-      }  
+      }
     
     private:
       Buf buffer{};
