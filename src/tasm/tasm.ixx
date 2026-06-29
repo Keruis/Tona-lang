@@ -6,6 +6,7 @@ import tona.opcode;
 import tona.byte;
 import tona.arena;
 import tona.asm_token;
+import tona.asm_err;
 
 export namespace Tona {
 
@@ -23,7 +24,7 @@ export namespace Tona {
     private:
       /*
         section data
-          msg<byte>{"Hello, World[s:%d]", 0}
+          msg<byte>{"Hello, World[s:%d]", 0x0}
           len<imm>{$ - msg}
         
         section text
@@ -59,29 +60,43 @@ export namespace Tona {
               break;
             }
 
-            case ':': {
+            case '<':
+            case '>':
+            case '{':
+            case '}':
+            case '(':
+            case ')':
+            case ':':
               vec_tokens.push_back({
-                .type = AsmTokenType::ATT_PUNCTUATORS_COLON
+                .type = static_cast<AsmTokenType>(*cur++)
               });
+              break;
+
+            case '0': {
               cur++;
-              break;
-            }
+              if (*cur++ != 'x')
+                asm_err();
 
-            case '0'...'9': {
-              const char* const start_ptr = cur;
+              std::uint64_t num = 0;
+
               do {
-                cur++;
-              } while (is_dec_char(*cur));
+                num = num * 16 + (
+                  (*cur <= '9') ? 
+                  (*cur -  '0') : 
+                  ((*cur | 0x20) - 'a' + 10)
+                );
+              } while (is_hex_char(*++cur));
               
-              
+              vec_tokens.push_back({
+                .type = AsmTokenType::ATT_IMM,
+                .num = num
+              });
               break;
-            }
-
-            case ',': {
-
             }
 
             case '"':
+
+            
           }
 
         }
