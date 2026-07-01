@@ -172,9 +172,10 @@ export namespace Tona {
           switch (*cur) {
             case 'u': case 'U':
             case 'i': case 'I':
-            case 'f': case 'F':
         pn_suf_num_i:
-              num_type = TokenType::T_LITERALS_FLOAT;
+              if (num_type != TokenType::T_LITERALS_INT) [[unlikely]]
+                goto pn_error;
+            case 'f': case 'F':
         pn_suf_num_f:
               cur++;
               num_type = static_cast<TokenType>(cast_u8(num_type) + 2); 
@@ -239,7 +240,7 @@ export namespace Tona {
         return identifier.cend();
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, LexError> parse_div(const char* cur, TokenContext& ctx) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, LexError> parse_div(const char* cur, TokenContext& ctx) {
         if (*++cur == '/') {
           do {
             cur++;
@@ -299,7 +300,7 @@ export namespace Tona {
 
       template <typename... Args>
         requires (std::constructible_from<std::string_view, Args...>)
-      [[nodiscard]] LexError make_error(LexErrorType type, Args&&... args) {
+      [[nodiscard]] LexError make_error(LexErrorType type, Args&&... args) noexcept {
         return {
           .err_text = std::string_view(std::forward<Args>(args)...),
           .type = type
