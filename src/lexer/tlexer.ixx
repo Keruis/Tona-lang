@@ -2,9 +2,9 @@ export module tona.lexer;
 
 import std;
 
-import tona.token;
 import tona.buf;
 import tona.byte;
+import tona.token;
 import tona.error;
 import tona.arena;
 
@@ -99,22 +99,11 @@ export namespace Tona {
           else cur = res.value();
           goto *labels[cast_u8(*cur)];
 
-        {
-          TokenType double_type;
-        l_assign:
-          double_type = TokenType::T_OPERATORS_EQ;
-          goto check_double_type;
-        l_less:
-          double_type = TokenType::T_OPERATORS_LE;
-          goto check_double_type;
-        l_greater:
-          double_type = TokenType::T_OPERATORS_GE;
-          goto check_double_type;
         l_not:
-          double_type = TokenType::T_OPERATORS_NEQ;
-        check_double_type:
-          goto *labels[cast_u8(*(cur = parse_double_char(cur, double_type, ctx)))];
-        }
+        l_less:
+        l_assign:
+        l_greater:
+          goto *labels[cast_u8(*(cur = parse_double_char(cur, ctx)))];
 
         l_div:
           if (auto res = parse_div(cur, ctx)) [[likely]]
@@ -262,7 +251,7 @@ export namespace Tona {
         return cur;
       } 
 
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_single_char(const char* cur, TokenContext& ctx) noexcept {
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_single_char(const char* cur, TokenContext& ctx) {
         ctx.tokens.push_back({
           .start = cur,
           .type = static_cast<TokenType>(*cur)
@@ -270,21 +259,16 @@ export namespace Tona {
         return cur + 1;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_double_char(const char* cur, TokenType double_type, TokenContext& ctx) noexcept {
-        const char* const start_ptr = cur;
-        if (cur[1] == '=') {
-          cur += 2;
+      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_double_char(const char* cur, TokenContext& ctx) {
+        if (*++cur == '=') {
           ctx.tokens.push_back({
-            .start = start_ptr,
-            .type = double_type
+            .start = cur++,
+            .type = static_cast<TokenType>(*cur + double_char_offset)
           });
         } else {
-          cur++;
           ctx.tokens.push_back({
-            .start = start_ptr,
-            .type = static_cast<TokenType>(
-              static_cast<std::uint8_t>(double_type) - double_char_offset
-            )
+            .start = cur,
+            .type = static_cast<TokenType>(*cur)
           });
         }
         return cur;
