@@ -1,3 +1,6 @@
+module;
+#include <concepts>
+#include <string_view>
 export module tona.lexer;
 
 import std;
@@ -68,10 +71,10 @@ export namespace Tona {
             case 'f' :
             case 'F' : cur++; goto pn_suf_num_f;
             [[unlikely]] case '\'': return std::unexpected(
-              LexError{
-                .err_text = std::string_view(start_ptr, cur),
-                .type = LexErrorType::LET_INVALID_DIGIT_SEPARATOR
-              }
+              make_error(
+                LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
+                start_ptr, cur
+              )
             );
             default:
               if (is_identifier_char(*cur)) [[unlikely]]
@@ -91,10 +94,10 @@ export namespace Tona {
         l_string:
           if (auto res = read_string(&cur[1], ctx, arena); !res.has_value()) [[unlikely]]
             return std::unexpected(
-              LexError{
-                .err_text = std::string_view(cur, res.error()),
-                .type = LexErrorType::LET_UNTERMINATED_STRING
-              }
+              make_error(
+                LexErrorType::LET_UNTERMINATED_STRING,
+                cur, res.error()
+              )
             );
           else cur = res.value();
           goto *labels[cast_u8(*cur)];
@@ -186,10 +189,10 @@ export namespace Tona {
 
         pn_error:
           return std::unexpected(
-            LexError{
-              .err_text = std::string_view(start_ptr, cur),
-              .type = LexErrorType::LET_INVALID_NUMERIC_LITERAL
-            }
+            make_error(
+              LexErrorType::LET_INVALID_NUMERIC_LITERAL,
+              start_ptr, cur
+            )
           );
 
         l_end:
@@ -235,10 +238,10 @@ export namespace Tona {
             cur++;
             if (*cur == '\0') [[unlikely]]
               return std::unexpected(
-                LexError{
-                  .err_text = std::string_view(cur, 1),
-                  .type = LexErrorType::LET_UNCLOSE_COMMENT
-                }
+              make_error(
+                  LexErrorType::LET_UNCLOSE_COMMENT, 
+                  cur, 1
+                )
               );
             if (*cur == '*' && cur[1] == '/')
               break;
@@ -277,9 +280,18 @@ export namespace Tona {
       [[nodiscard]] LexError parse_invalid_char(const char* cur) noexcept {
         std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
         len = (len == 0 || len > 4) ? 1 : len;
+        return make_error(
+          LexErrorType::LET_INVALID_CHAR,
+          cur, len
+        );
+      }
+
+      template <typename... Args>
+        requires (std::constructible_from<std::string_view, Args...>)
+      [[nodiscard]] LexError make_error(LexErrorType type, Args&&... args) {
         return {
-          .err_text = std::string_view(cur, len),
-          .type = LexErrorType::LET_INVALID_CHAR
+          .err_text = std::string_view(std::forward<Args>(args)...),
+          .type = type
         };
       }
 
