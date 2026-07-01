@@ -32,11 +32,11 @@ export namespace Tona {
           goto *labels[cast_u8(*(cur = skip_whitespace(cur)))];
           
         l_identifier:
-          goto *labels[cast_u8(*(cur = parse_identifier(cur, ctx)))];
+          goto *labels[cast_u8(parse_identifier(cur, ctx))];
 
         l_op_chars:
         l_punc_chars:
-          goto *labels[cast_u8(*(cur = parse_single_char(cur, ctx)))];
+          goto *labels[cast_u8(parse_single_char(cur, ctx))];
 
         l_digit_0:
           start_ptr = cur++;
@@ -56,7 +56,7 @@ export namespace Tona {
           
         l_digit_1_9:
           start_ptr = cur++;
-          cur = consume_digit_sequence<
+          consume_digit_sequence<
             is_dec_char
           >(cur);
         check_numeric_suffix:
@@ -91,63 +91,54 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         l_string:
-          if (auto res = read_string(&cur[1], ctx, arena); !res.has_value()) [[unlikely]]
+          start_ptr = cur;
+          if (!read_string(++cur, ctx, arena)) [[unlikely]]
             return std::unexpected(
               make_error(
                 LexErrorType::LET_UNTERMINATED_STRING,
-                cur, res.error()
+                start_ptr, cur
               )
             );
-          else cur = res.value();
+
           goto *labels[cast_u8(*cur)];
 
         l_not:
         l_less:
         l_assign:
         l_greater:
-          goto *labels[cast_u8(*(cur = parse_double_char(cur, ctx)))];
+          goto *labels[cast_u8(parse_double_char(cur, ctx))];
 
         l_div:
-          if (auto res = parse_div(cur, ctx)) [[likely]]
-            goto *labels[cast_u8(*(cur = res.value()))];
-          else
-            return std::unexpected(res.error());
+          if (!parse_div(cur, ctx)) [[unlikely]]
+            return std::unexpected(
+              make_error(
+                LexErrorType::LET_UNCLOSE_COMMENT, 
+                cur, 1
+              )
+            );
+
+          goto *labels[cast_u8(*cur)];
 
         pn_bin_prefix:
-          if (!is_bin_char(*cur)) [[unlikely]]
-            goto pn_error;
-          cur = consume_digit_sequence<
-            bin_char
-          >(cur);
-          if (!is_bin_char(cur[-1])) [[unlikely]]
+          if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error;
 
           goto pn_end;
           
         pn_oct_prefix:
-          if (!is_oct_char(*cur)) [[unlikely]]
-            goto pn_error;
-          cur = consume_digit_sequence<
-            is_oct_char
-          >(cur);
-          if (!is_oct_char(cur[-1])) [[unlikely]]
+          if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
             goto pn_error;
 
           goto pn_end;
 
         pn_hex_prefix:
-          if (!is_hex_char(*cur)) [[unlikely]]
-            goto pn_error;
-          cur = consume_digit_sequence<
-            is_hex_char
-          >(cur);
-          if (!is_hex_char(cur[-1])) [[unlikely]]
+          if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
             goto pn_error;
 
           goto pn_end;
 
         pn_franction_direct:
-          cur = consume_digit_sequence<
+          consume_digit_sequence<
             is_dec_char
           >(cur);
 
@@ -158,7 +149,7 @@ export namespace Tona {
               cur++;
             if (!is_dec_char(*cur)) [[unlikely]]
               goto pn_error;
-            cur = consume_digit_sequence<
+            consume_digit_sequence<
               is_dec_char
             >(cur);
           }
@@ -220,7 +211,7 @@ export namespace Tona {
       }
 
     private:
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_identifier(const char* cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_identifier(const char*& cur, TokenContext& ctx) {
         std::string_view identifier(cur, identifier_char(cur));
         if (
           auto res = find_keyword(identifier); 
@@ -237,10 +228,11 @@ export namespace Tona {
           .start = cur,
           .type = res
         });
-        return identifier.cend();
+        cur = identifier.cend();
+        return *cur;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, LexError> parse_div(const char* cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline bool parse_div(const char*& cur, TokenContext& ctx) {
         if (*++cur == '/') {
           do {
             cur++;
@@ -249,12 +241,7 @@ export namespace Tona {
           while (true) {
             cur++;
             if (*cur == '\0') [[unlikely]]
-              return std::unexpected(
-              make_error(
-                  LexErrorType::LET_UNCLOSE_COMMENT, 
-                  cur, 1
-                )
-              );
+              return false;
             if (*cur == '*' && cur[1] == '/')
               break;
           }
@@ -263,30 +250,33 @@ export namespace Tona {
             .start = cur - 1,
             .type = TokenType::T_OPERATORS_DIV
           });
-        return cur;
+        return true;
       } 
 
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_single_char(const char* cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_single_char(const char*& cur, TokenContext& ctx) {
         ctx.tokens.push_back({
           .start = cur,
           .type = static_cast<TokenType>(*cur)
         });
-        return cur + 1;
+        cur++;
+        return *cur;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline const char* parse_double_char(const char* cur, TokenContext& ctx) {
-        if (*++cur == '=') {
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_double_char(const char*& cur, TokenContext& ctx) {
+        if (cur[1] == '=') {
           ctx.tokens.push_back({
-            .start = cur++,
+            .start = cur,
             .type = static_cast<TokenType>(*cur + double_char_offset)
           });
+          cur += 2;
         } else {
           ctx.tokens.push_back({
             .start = cur,
             .type = static_cast<TokenType>(*cur)
           });
+          cur++;
         }
-        return cur;
+        return *cur;
       }
 
       [[nodiscard]] LexError parse_invalid_char(const char* cur) noexcept {
@@ -309,7 +299,7 @@ export namespace Tona {
 
     private:
       template <auto PredFunc, typename FT = decltype(PredFunc)>
-      [[nodiscard]] [[gnu::always_inline]] inline const char* consume_digit_sequence(const char* start) noexcept {
+      [[gnu::always_inline]] inline void consume_digit_sequence(const char*& start) noexcept {
         if constexpr (std::predicate<FT, decltype(*start)>) {
           while (true) {
             if (PredFunc(*start))
@@ -323,10 +313,23 @@ export namespace Tona {
         }) {
           start = PredFunc(start);
         } else static_assert(false, "fun type error");
-        return start;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline std::expected<const char*, const char*> read_string(const char* start, TokenContext& ctx, Arena& arena) {
+      template <auto PredFunc1, auto PredFunc2, typename FT1 = decltype(PredFunc1)>
+      [[nodiscard]] [[gnu::always_inline]] inline bool parse_radix_digits(const char*& start)
+        noexcept requires(std::predicate<FT1, decltype(*start)>) 
+      {
+        if (!PredFunc1(*start)) [[unlikely]]
+          return false;
+        consume_digit_sequence<
+          PredFunc2
+        >(start);
+        if (!PredFunc1(start[-1])) [[unlikely]]
+          return false;
+        return true;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline bool read_string(const char*& start, TokenContext& ctx, Arena& arena) {
         const char* const start_ptr = start;
         const char* prev_ptr = start;
 
@@ -410,7 +413,7 @@ export namespace Tona {
                 }
                 [[unlikely]] case '\0':
                 [[unlikely]] case '\n':
-                [[unlikely]] case '\r': return std::unexpected(start);
+                [[unlikely]] case '\r': return false;
                 default:
                   buffer.stuff_back(*start++);
               }
