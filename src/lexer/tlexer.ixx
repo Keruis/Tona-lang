@@ -1,6 +1,3 @@
-module;
-#include <concepts>
-#include <string_view>
 export module tona.lexer;
 
 import std;
@@ -44,12 +41,15 @@ export namespace Tona {
         l_digit_0:
           start_ptr = cur++;
           switch (*cur) {
-            case 'b' :
-            case 'B' : cur++; goto pn_bin_prefix;
-            case 'o' :
-            case 'O' : cur++; goto pn_oct_prefix;
-            case 'x' :
-            case 'X' : cur++; goto pn_hex_prefix;
+            case 'b': case 'B': 
+              cur++; 
+              goto pn_bin_prefix;
+            case 'o': case 'O': 
+              cur++; 
+              goto pn_oct_prefix;
+            case 'x': case 'X': 
+              cur++; 
+              goto pn_hex_prefix;
             default:
               goto check_numeric_suffix;
           }
@@ -61,15 +61,15 @@ export namespace Tona {
           >(cur);
         check_numeric_suffix:
           switch (*cur) {
-            case '.' : cur++; goto pn_franction_direct;
-            case 'e' :
-            case 'E' : cur++; goto pn_exponect_direct;
-            case 'u' :
-            case 'U' :
-            case 'i' :
-            case 'I' : cur++; goto pn_suf_num_i;
-            case 'f' :
-            case 'F' : cur++; goto pn_suf_num_f;
+            case '.': cur++; goto pn_franction_direct;
+            case 'e': case 'E': 
+              goto pn_exponect_direct;
+            case 'u': case 'U':
+            case 'i': case 'I': 
+              goto pn_suf_num_i;
+            case 'f': case 'F': 
+              num_type = TokenType::T_LITERALS_FLOAT; 
+              goto pn_suf_num_f;
             [[unlikely]] case '\'': return std::unexpected(
               make_error(
                 LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
@@ -115,6 +115,8 @@ export namespace Tona {
             return std::unexpected(res.error());
 
         pn_bin_prefix:
+          if (!is_bin_char(*cur)) [[unlikely]]
+            goto pn_error;
           cur = consume_digit_sequence<
             bin_char
           >(cur);
@@ -122,6 +124,8 @@ export namespace Tona {
           goto pn_end;
           
         pn_oct_prefix:
+          if (!is_oct_char(*cur)) [[unlikely]]
+            goto pn_error;
           cur = consume_digit_sequence<
             is_oct_char
           >(cur);
@@ -129,6 +133,8 @@ export namespace Tona {
           goto pn_end;
 
         pn_hex_prefix:
+          if (!is_hex_char(*cur)) [[unlikely]]
+            goto pn_error;
           cur = consume_digit_sequence<
             is_hex_char
           >(cur);
@@ -136,12 +142,14 @@ export namespace Tona {
           goto pn_end;
 
         pn_franction_direct:
+          num_type = TokenType::T_LITERALS_FLOAT;
           cur = consume_digit_sequence<
             is_dec_char
           >(cur);
 
           if (*cur == 'e' || *cur == 'E') {
         pn_exponect_direct:
+            cur++;
             if (*cur == '+' || *cur == '-')
               cur++;
             if (!is_dec_char(*cur)) [[unlikely]]
@@ -150,27 +158,23 @@ export namespace Tona {
               is_dec_char
             >(cur);
           }
-          num_type = TokenType::T_LITERALS_FLOAT;
 
         pn_end:
-          if (cur[-1] == '\'') [[unlikely]]
+          if (*cur == '\'') [[unlikely]]
             goto pn_error;
   
           switch (*cur) {
-            case 'u':
-            case 'U':
-            case 'i':
-            case 'I':
-        pn_suf_num_i: 
-              num_type = TokenType::T_LITERALS_INT_SUF; 
-              break;
-            case 'f':
-            case 'F':
-        pn_suf_num_f: 
-              num_type = TokenType::T_LITERALS_FLOAT_SUF; 
-              break;
+            case 'u': case 'U':
+            case 'i': case 'I':
+            case 'f': case 'F':
+        pn_suf_num_i:
+        pn_suf_num_f:
+              cur++;
+              num_type = static_cast<TokenType>(cast_u8(num_type) + 2); 
+              goto pn_suf_num;
             default: goto pn_save;
           }
+
         pn_suf_num:
           while (is_dec_char(*cur))
             cur++;

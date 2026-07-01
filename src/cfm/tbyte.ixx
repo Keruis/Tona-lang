@@ -153,6 +153,10 @@ export namespace Tona {
     }
   }
 
+  [[nodiscard]] [[gnu::always_inline]] inline bool is_bin_char(char c) noexcept {
+    return c == '0' || c == '1';
+  }
+
   [[nodiscard]] [[gnu::always_inline]] inline bool is_hex_char(char c) noexcept {
     return (c >= '0' && c <= '9') || ((c | 0x20) >= 'a' && (c | 0x20) <= 'f');
   }
