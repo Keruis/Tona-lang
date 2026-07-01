@@ -120,6 +120,8 @@ export namespace Tona {
           cur = consume_digit_sequence<
             bin_char
           >(cur);
+          if (!is_bin_char(cur[-1])) [[unlikely]]
+            goto pn_error;
 
           goto pn_end;
           
@@ -129,6 +131,8 @@ export namespace Tona {
           cur = consume_digit_sequence<
             is_oct_char
           >(cur);
+          if (!is_oct_char(cur[-1])) [[unlikely]]
+            goto pn_error;
 
           goto pn_end;
 
@@ -138,11 +142,12 @@ export namespace Tona {
           cur = consume_digit_sequence<
             is_hex_char
           >(cur);
+          if (!is_hex_char(cur[-1])) [[unlikely]]
+            goto pn_error;
 
           goto pn_end;
 
         pn_franction_direct:
-          num_type = TokenType::T_LITERALS_FLOAT;
           cur = consume_digit_sequence<
             is_dec_char
           >(cur);
@@ -158,6 +163,7 @@ export namespace Tona {
               is_dec_char
             >(cur);
           }
+          num_type = TokenType::T_LITERALS_FLOAT;
 
         pn_end:
           if (*cur == '\'') [[unlikely]]
@@ -168,6 +174,7 @@ export namespace Tona {
             case 'i': case 'I':
             case 'f': case 'F':
         pn_suf_num_i:
+              num_type = TokenType::T_LITERALS_FLOAT;
         pn_suf_num_f:
               cur++;
               num_type = static_cast<TokenType>(cast_u8(num_type) + 2); 
