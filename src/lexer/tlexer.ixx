@@ -67,8 +67,7 @@ export namespace Tona {
             case 'u': case 'U':
             case 'i': case 'I': 
               goto pn_suf_num_i;
-            case 'f': case 'F': 
-              num_type = TokenType::T_LITERALS_FLOAT; 
+            case 'f': case 'F':  
               goto pn_suf_num_f;
             [[unlikely]] case '\'': return std::unexpected(
               make_error(
@@ -178,6 +177,7 @@ export namespace Tona {
             case 'f': case 'F':
         pn_suf_num_f:
               cur++;
+              num_type = TokenType::T_LITERALS_FLOAT;
               num_type = static_cast<TokenType>(cast_u8(num_type) + 2); 
               goto pn_suf_num;
             default: goto pn_save;
