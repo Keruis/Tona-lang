@@ -165,11 +165,13 @@ export namespace Tona {
         pn_suf_num_i:
               if (num_type != TokenType::T_LITERALS_INT) [[unlikely]]
                 goto pn_error;
+              cur++;
+              num_type = TokenType::T_LITERALS_INT_SUF;
+              goto pn_suf_num;
             case 'f': case 'F':
         pn_suf_num_f:
-              cur++;
-              num_type = TokenType::T_LITERALS_FLOAT;
-              num_type = static_cast<TokenType>(cast_u8(num_type) + 2); 
+              cur++;      
+              num_type = TokenType::T_LITERALS_FLOAT_SUF; 
               goto pn_suf_num;
             default: goto pn_save;
           }
@@ -370,11 +372,12 @@ export namespace Tona {
                     .data = arena_mem,
                     .len = len
                   },
-                  .start = start_ptr,
+                  .start = start_ptr - 1,
                   .type = TokenType::T_LITERALS_STRING
                 });
                 buffer.reset();
-                return start + 1;
+                start++;
+                return true;
               }
 
               buffer.stuff_back(prev_ptr, start - prev_ptr);
