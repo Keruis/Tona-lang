@@ -36,14 +36,12 @@ export namespace Tona {
 
     T_IDENTIFIER = 160,
 
-    T_KEYWORD_VAR = 161,
-    T_KEYWORD_IF = 162,
-    T_KEYWORD_ELSE = 163,
-    T_KEYWORD_FUN = 164,
-    T_KEYWORD_FOR = 165,
-    T_KEYWORD_TRUE = 166,
-    T_KEYWORD_FALSE = 167,
-    T_KEYWORD_RETURN = 168,
+    T_KEYWORD_IF = 161,
+    T_KEYWORD_ELSE = 162,
+    T_KEYWORD_FOR = 163,
+    T_KEYWORD_TRUE = 164,
+    T_KEYWORD_FALSE = 165,
+    T_KEYWORD_RETURN = 166,
 
     T_LITERALS_INT = 220,
     T_LITERALS_FLOAT = 221,
@@ -106,10 +104,8 @@ export namespace Tona {
     pun(TokenType::T_PUNCTUATORS_COLON);
     pun(TokenType::T_PUNCTUATORS_SEMICOLON);
 
-    kw(TokenType::T_KEYWORD_VAR);
     kw(TokenType::T_KEYWORD_IF);
     kw(TokenType::T_KEYWORD_ELSE);
-    kw(TokenType::T_KEYWORD_FUN);
     kw(TokenType::T_KEYWORD_FOR);
     kw(TokenType::T_KEYWORD_TRUE);
     kw(TokenType::T_KEYWORD_FALSE);
@@ -128,17 +124,13 @@ export namespace Tona {
     return table;
   }();
 
-  constexpr std::size_t keyword_start_index = cast_usize(TokenType::T_KEYWORD_VAR);
-
   [[nodiscard]] constexpr TokenType find_keyword(std::string_view text) noexcept {
     switch (text.size()) {
       case 2: {
         if (text == "if") return TokenType::T_KEYWORD_IF;
-        if (text == "fn") return TokenType::T_KEYWORD_FUN;
         break;
       }
       case 3: {
-        if (text == "var") return TokenType::T_KEYWORD_VAR;
         if (text == "for") return TokenType::T_KEYWORD_FOR;
         break;
       }
@@ -168,7 +160,7 @@ export namespace Tona {
   };
 
   struct TokenContext {
-    std::pmr::vector<Token> tokens;
-    std::size_t path_idx;
+    std::pmr::vector<std::pmr::vector<Token>> tokens;
+    std::vector<std::size_t> path_idx;
   };
 }

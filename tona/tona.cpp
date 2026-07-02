@@ -1,8 +1,7 @@
 import std;
 
-import tona.elysia;
-
 import tona.vm;
+import tona.elysia;
 import tona.assembler;
 
 int main(int argc, char* argv[]) {

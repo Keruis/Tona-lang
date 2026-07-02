@@ -12,11 +12,7 @@ export namespace Tona {
 
   class Lexer {
     public:
-      [[nodiscard]] std::expected<TokenContext, LexError> tokenize(std::string_view text, Arena& arena) noexcept {
-        TokenContext ctx {
-          .tokens = std::pmr::vector<Token>(&arena)
-        };
-
+      [[nodiscard]] LexError tokenize(std::string_view text, std::pmr::vector<Token>& tokens, Arena& ca) noexcept {
         const char* cur = text.data();
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
@@ -32,11 +28,11 @@ export namespace Tona {
           goto *labels[cast_u8(*(cur = skip_whitespace(cur)))];
           
         l_identifier:
-          goto *labels[cast_u8(parse_identifier(cur, ctx))];
+          goto *labels[cast_u8(parse_identifier(cur, tokens))];
 
         l_op_chars:
         l_punc_chars:
-          goto *labels[cast_u8(parse_single_char(cur, ctx))];
+          goto *labels[cast_u8(parse_single_char(cur, tokens))];
 
         l_digit_0:
           start_ptr = cur++;
@@ -69,16 +65,14 @@ export namespace Tona {
               goto pn_suf_num_i;
             case 'f': case 'F':  
               goto pn_suf_num_f;
-            [[unlikely]] case '\'': return std::unexpected(
-              make_error(
+            [[unlikely]] case '\'': return make_error(
                 LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
                 start_ptr, cur
-              )
-            );
+              );
             default:
               if (is_identifier_char(*cur)) [[unlikely]]
-                goto pn_error;
-              ctx.tokens.push_back({
+                goto pn_error_invalid_numeric;
+              tokens.push_back({
                 .text = {
                   .data = start_ptr, 
                   .len = cast_usize(cur - start_ptr)
@@ -92,12 +86,10 @@ export namespace Tona {
 
         l_string:
           start_ptr = cur;
-          if (!read_string(++cur, ctx, arena)) [[unlikely]]
-            return std::unexpected(
-              make_error(
-                LexErrorType::LET_UNTERMINATED_STRING,
-                start_ptr, cur
-              )
+          if (!read_string(++cur, tokens, ca)) [[unlikely]]
+            return make_error(
+              LexErrorType::LET_UNTERMINATED_STRING,
+              start_ptr, cur
             );
 
           goto *labels[cast_u8(*cur)];
@@ -106,35 +98,30 @@ export namespace Tona {
         l_less:
         l_assign:
         l_greater:
-          goto *labels[cast_u8(parse_double_char(cur, ctx))];
+          goto *labels[cast_u8(parse_double_char(cur, tokens))];
 
         l_div:
-          if (!parse_div(cur, ctx)) [[unlikely]]
-            return std::unexpected(
-              make_error(
-                LexErrorType::LET_UNCLOSE_COMMENT, 
-                cur, 1
-              )
+          if (!parse_div(cur, tokens)) [[unlikely]]
+            return make_error(
+              LexErrorType::LET_UNCLOSE_COMMENT, 
+              cur, 1
             );
 
           goto *labels[cast_u8(*cur)];
 
         pn_bin_prefix:
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
-            goto pn_error;
-
+            goto pn_error_invalid_numeric;
           goto pn_end;
           
         pn_oct_prefix:
           if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
-            goto pn_error;
-
+            goto pn_error_invalid_numeric;
           goto pn_end;
 
         pn_hex_prefix:
           if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
-            goto pn_error;
-
+            goto pn_error_invalid_numeric;
           goto pn_end;
 
         pn_franction_direct:
@@ -148,7 +135,7 @@ export namespace Tona {
             if (*cur == '+' || *cur == '-')
               cur++;
             if (!is_dec_char(*cur)) [[unlikely]]
-              goto pn_error;
+              goto pn_error_invalid_numeric;
             consume_digit_sequence<
               is_dec_char
             >(cur);
@@ -157,14 +144,14 @@ export namespace Tona {
 
         pn_end:
           if (*cur == '\'') [[unlikely]]
-            goto pn_error;
+            goto pn_error_digit_separator;
   
           switch (*cur) {
             case 'u': case 'U':
             case 'i': case 'I':
         pn_suf_num_i:
               if (num_type != TokenType::T_LITERALS_INT) [[unlikely]]
-                goto pn_error;
+                goto pn_error_suffix_type;
               cur++;
               num_type = TokenType::T_LITERALS_INT_SUF;
               goto pn_suf_num;
@@ -180,7 +167,7 @@ export namespace Tona {
           while (is_dec_char(*cur))
             cur++;
         pn_save:
-          ctx.tokens.push_back({
+          tokens.push_back({
             .text = {
               .data = start_ptr, 
               .len = cast_usize(cur - start_ptr)
@@ -192,33 +179,45 @@ export namespace Tona {
           num_type = TokenType::T_LITERALS_INT;
           goto *labels[cast_u8(*cur)];
 
-        pn_error:
-          return std::unexpected(
-            make_error(
-              LexErrorType::LET_INVALID_NUMERIC_LITERAL,
-              start_ptr, cur
-            )
-          );
-
         l_end:
-          ctx.tokens.push_back({
+          tokens.push_back({
             .start = cur,
             .type = TokenType::T_END
           });
 
-          return ctx;
+          return {
+            .type = LexErrorType::LET_NONE
+          };
+        
+        pn_error_digit_separator:
+          return make_error(
+            LexErrorType::LET_INVALID_NUMERIC_LITERAL,
+            start_ptr, cur
+          );
+        
+        pn_error_invalid_numeric:
+          return make_error(
+            LexErrorType::LET_INVALID_NUMERIC_LITERAL,
+            start_ptr, cur
+          );
+
+        pn_error_suffix_type:
+          return make_error(
+            LexErrorType::LET_INVALID_SUFFIX_TYPE,
+            start_ptr, cur
+          );
 
         l_default:
-          return std::unexpected(parse_invalid_char(cur));
+          return parse_invalid_char(cur);
       }
 
     private:
-      [[nodiscard]] [[gnu::always_inline]] inline char parse_identifier(const char*& cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_identifier(const char*& cur, std::pmr::vector<Token>& tokens) {
         std::string_view identifier(cur, identifier_char(cur));
         if (
           auto res = find_keyword(identifier); 
           res == TokenType::T_IDENTIFIER
-        ) ctx.tokens.push_back({
+        ) tokens.push_back({
             .text = {
               .data = cur,
               .len = identifier.size()
@@ -226,7 +225,7 @@ export namespace Tona {
             .start = cur,
             .type = TokenType::T_IDENTIFIER
           });
-        else ctx.tokens.push_back({
+        else tokens.push_back({
           .start = cur,
           .type = res
         });
@@ -234,7 +233,7 @@ export namespace Tona {
         return *cur;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline bool parse_div(const char*& cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline bool parse_div(const char*& cur, std::pmr::vector<Token>& tokens) {
         if (*++cur == '/') {
           do {
             cur++;
@@ -248,15 +247,15 @@ export namespace Tona {
               break;
           }
           cur += 2;
-        } else ctx.tokens.push_back({
+        } else tokens.push_back({
             .start = cur - 1,
             .type = TokenType::T_OPERATORS_DIV
           });
         return true;
       } 
 
-      [[nodiscard]] [[gnu::always_inline]] inline char parse_single_char(const char*& cur, TokenContext& ctx) {
-        ctx.tokens.push_back({
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_single_char(const char*& cur, std::pmr::vector<Token>& tokens) {
+        tokens.push_back({
           .start = cur,
           .type = static_cast<TokenType>(*cur)
         });
@@ -264,15 +263,15 @@ export namespace Tona {
         return *cur;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline char parse_double_char(const char*& cur, TokenContext& ctx) {
+      [[nodiscard]] [[gnu::always_inline]] inline char parse_double_char(const char*& cur, std::pmr::vector<Token>& tokens) {
         if (cur[1] == '=') {
-          ctx.tokens.push_back({
+          tokens.push_back({
             .start = cur,
             .type = static_cast<TokenType>(*cur + double_char_offset)
           });
           cur += 2;
         } else {
-          ctx.tokens.push_back({
+          tokens.push_back({
             .start = cur,
             .type = static_cast<TokenType>(*cur)
           });
@@ -331,7 +330,7 @@ export namespace Tona {
         return true;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline bool read_string(const char*& start, TokenContext& ctx, Arena& arena) {
+      [[nodiscard]] [[gnu::always_inline]] inline bool read_string(const char*& start, std::pmr::vector<Token>& tokens, Arena& arena) {
         const char* const start_ptr = start;
         const char* prev_ptr = start;
 
@@ -367,7 +366,7 @@ export namespace Tona {
                 }
                 char* arena_mem = static_cast<char*>(arena.allocate(len, 1));
                 std::memcpy(arena_mem, buf_ptr, len);
-                ctx.tokens.push_back({
+                tokens.push_back({
                   .text = {
                     .data = arena_mem,
                     .len = len

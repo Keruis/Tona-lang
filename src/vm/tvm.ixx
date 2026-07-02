@@ -2,13 +2,13 @@ export module tona.vm;
 
 import std;
 
-import tona.config;
 import tona.byte;
-import tona.functional;
-import tona.opcode;
+import tona.heap;
 import tona.error;
 import tona.stack;
-import tona.heap;
+import tona.config;
+import tona.opcode;
+import tona.functional;
 
 export namespace Tona {
 
