@@ -16,19 +16,49 @@ export namespace Tona {
 
       void parse(std::span<const Token> tokens) {
         const Token* cur = tokens.data();
+        
+        static constexpr void* labels[6] = {
+          &&p_end, &&p_identifier,
+          &&p_operator, &&p_literal,
+          &&p_keyword, &&p_punctuator
+        };
 
-        switch (cur->cls) {
-          case TokenClass::C_IDENTIFIER:
-          case TokenClass::C_KEYWORD:
-          case TokenClass::C_LITERAL:
-          case TokenClass::C_OPERATOR:
-          case TokenClass::C_PUNCTUATOR:
-          case TokenClass::C_END:
-        }
+        goto *labels[cast_u8(cur->cls)];
+
+        p_keyword:
+          parse_keyword(cur);
+          goto *labels[cast_u8(cur->cls)];
+
+        p_identifier:
+          parse_identifier(cur);
+          goto *labels[cast_u8(cur->cls)];
+
+        p_operator:
+
+          goto *labels[cast_u8(cur->cls)];
+
+        p_literal:
+          goto *labels[cast_u8(cur->cls)];
+
+        
+        p_punctuator:
+          goto *labels[cast_u8(cur->cls)];
+
+        p_end:
+
       }
 
     private:
+      void parse_keyword(const Token*& tokens) {
 
+      }
+
+      void parse_identifier(const Token*& tokens) {
+
+      }
+
+    private:
+      
 
   };
 

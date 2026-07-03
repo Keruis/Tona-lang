@@ -51,7 +51,7 @@ export namespace Tona {
     _ = 255
   };
 
-  enum class TokenClass : std::uint32_t {
+  enum class TokenClass : std::uint8_t {
     C_END = 0,
     C_IDENTIFIER,
     C_OPERATOR,
