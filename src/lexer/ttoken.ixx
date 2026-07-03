@@ -60,69 +60,14 @@ export namespace Tona {
     C_PUNCTUATOR
   };
 
-  struct TokenInfo {
-    TokenClass cls = TokenClass::C_END;
-    std::uint32_t precedence = 0;
-  };
-
-  constexpr auto tokens_info = [] {
-    std::array<TokenInfo, 256> table{};
-
-    auto op = [&](TokenType t, std::uint32_t prec) { 
-      table[cast_usize(t)] = {TokenClass::C_OPERATOR, prec}; 
-    };
-    
-    auto pun = [&](TokenType t) { 
-      table[cast_usize(t)] = {TokenClass::C_PUNCTUATOR, 0}; 
-    };
-
-    auto kw = [&](TokenType t) { 
-      table[cast_usize(t)] = {TokenClass::C_KEYWORD, 0}; 
-    };
-
-    op(TokenType::T_OPERATORS_ASSIGN, 1);
-    op(TokenType::T_OPERATORS_EQ, 2);
-    op(TokenType::T_OPERATORS_LT, 2);
-    op(TokenType::T_OPERATORS_GT, 2);
-    op(TokenType::T_OPERATORS_LE, 2);
-    op(TokenType::T_OPERATORS_GE, 2);
-    op(TokenType::T_OPERATORS_NEQ, 2);
-    op(TokenType::T_OPERATORS_ADD, 3);
-    op(TokenType::T_OPERATORS_SUB, 3);
-    op(TokenType::T_OPERATORS_MUL, 4);
-    op(TokenType::T_OPERATORS_DIV, 4);
-    op(TokenType::T_OPERATORS_MOD, 4);
-    op(TokenType::T_OPERATORS_NOT, 0);
-
-    pun(TokenType::T_PUNCTUATORS_LPAREN);
-    pun(TokenType::T_PUNCTUATORS_RPAREN);
-    pun(TokenType::T_PUNCTUATORS_LBRACKET);
-    pun(TokenType::T_PUNCTUATORS_RBRACKET);
-    pun(TokenType::T_PUNCTUATORS_LBRACE);
-    pun(TokenType::T_PUNCTUATORS_RBRACE);
-    pun(TokenType::T_PUNCTUATORS_COMMA);
-    pun(TokenType::T_PUNCTUATORS_COLON);
-    pun(TokenType::T_PUNCTUATORS_SEMICOLON);
-
-    kw(TokenType::T_KEYWORD_IF);
-    kw(TokenType::T_KEYWORD_ELSE);
-    kw(TokenType::T_KEYWORD_FOR);
-    kw(TokenType::T_KEYWORD_TRUE);
-    kw(TokenType::T_KEYWORD_FALSE);
-    kw(TokenType::T_KEYWORD_RETURN);
-
-    table[cast_usize(TokenType::T_LITERALS_INT)]    = {TokenClass::C_LITERAL, 0};
-    table[cast_usize(TokenType::T_LITERALS_FLOAT)]  = {TokenClass::C_LITERAL, 0};
-    table[cast_usize(TokenType::T_LITERALS_INT_SUF)]    = {TokenClass::C_LITERAL, 0};
-    table[cast_usize(TokenType::T_LITERALS_FLOAT_SUF)]  = {TokenClass::C_LITERAL, 0};
-    table[cast_usize(TokenType::T_LITERALS_STRING)] = {TokenClass::C_LITERAL, 0};
-
-    table[cast_usize(TokenType::T_IDENTIFIER)] = {TokenClass::C_IDENTIFIER, 0};
-
-    table[cast_usize(TokenType::T_END)] = {TokenClass::C_END, 0};
-
-    return table;
-  }();
+  [[nodiscard]] constexpr std::uint8_t get_prec(TokenType type) noexcept {
+    static constexpr auto prec_table = []{
+      std::array<std::uint8_t, 256> table{};
+      
+      return table;
+    }();
+    return prec_table[cast_u8(type)];
+  }
 
   [[nodiscard]] constexpr TokenType find_keyword(std::string_view text) noexcept {
     switch (text.size()) {
@@ -157,6 +102,8 @@ export namespace Tona {
     } text;
     const char* start;
     TokenType type;
+    TokenClass cls;
+    std::uint8_t precedence;
   };
 
   struct TokenContext {

@@ -31,8 +31,10 @@ export namespace Tona {
           goto *labels[cast_u8(parse_identifier(cur, tokens))];
 
         l_op_chars:
+          goto *labels[cast_u8(parse_single_char<TokenClass::C_OPERATOR>(cur, tokens))];
+
         l_punc_chars:
-          goto *labels[cast_u8(parse_single_char(cur, tokens))];
+          goto *labels[cast_u8(parse_single_char<TokenClass::C_PUNCTUATOR>(cur, tokens))];
 
         l_digit_0:
           start_ptr = cur++;
@@ -78,7 +80,8 @@ export namespace Tona {
                   .len = cast_usize(cur - start_ptr)
                 },
                 .start = start_ptr,
-                .type = TokenType::T_LITERALS_INT
+                .type = TokenType::T_LITERALS_INT,
+                .cls = TokenClass::C_LITERAL
               });
           }
 
@@ -173,7 +176,8 @@ export namespace Tona {
               .len = cast_usize(cur - start_ptr)
             },
             .start = start_ptr,
-            .type = num_type
+            .type = num_type,
+            .cls = TokenClass::C_LITERAL
           });
 
           num_type = TokenType::T_LITERALS_INT;
@@ -223,11 +227,13 @@ export namespace Tona {
               .len = identifier.size()
             },
             .start = cur,
-            .type = TokenType::T_IDENTIFIER
+            .type = TokenType::T_IDENTIFIER,
+            .cls = TokenClass::C_IDENTIFIER
           });
         else tokens.push_back({
           .start = cur,
-          .type = res
+          .type = res,
+          .cls = TokenClass::C_KEYWORD
         });
         cur = identifier.cend();
         return *cur;
@@ -249,31 +255,45 @@ export namespace Tona {
           cur += 2;
         } else tokens.push_back({
             .start = cur - 1,
-            .type = TokenType::T_OPERATORS_DIV
+            .type = TokenType::T_OPERATORS_DIV,
+            .cls = TokenClass::C_OPERATOR,
+            .precedence = get_prec(static_cast<TokenType>(*cur))
           });
         return true;
       } 
 
+      template <TokenClass cls>
       [[nodiscard]] [[gnu::always_inline]] inline char parse_single_char(const char*& cur, std::pmr::vector<Token>& tokens) {
-        tokens.push_back({
-          .start = cur,
-          .type = static_cast<TokenType>(*cur)
-        });
-        cur++;
-        return *cur;
+        if constexpr (cls == TokenClass::C_OPERATOR)
+          tokens.push_back({
+            .start = cur,
+            .type = static_cast<TokenType>(*cur),
+            .cls = cls,
+            .precedence = get_prec(static_cast<TokenType>(*cur))
+          });
+        else tokens.push_back({
+            .start = cur,
+            .type = static_cast<TokenType>(*cur),
+            .cls = cls,
+          });
+        return *++cur;
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline char parse_double_char(const char*& cur, std::pmr::vector<Token>& tokens) {
         if (cur[1] == '=') {
           tokens.push_back({
             .start = cur,
-            .type = static_cast<TokenType>(*cur + double_char_offset)
+            .type = static_cast<TokenType>(*cur + double_char_offset),
+            .cls = TokenClass::C_OPERATOR,
+            .precedence = get_prec(static_cast<TokenType>(*cur + double_char_offset))
           });
           cur += 2;
         } else {
           tokens.push_back({
             .start = cur,
-            .type = static_cast<TokenType>(*cur)
+            .type = static_cast<TokenType>(*cur),
+            .cls = TokenClass::C_OPERATOR,
+            .precedence = get_prec(static_cast<TokenType>(*cur))
           });
           cur++;
         }
@@ -372,7 +392,8 @@ export namespace Tona {
                     .len = len
                   },
                   .start = start_ptr - 1,
-                  .type = TokenType::T_LITERALS_STRING
+                  .type = TokenType::T_LITERALS_STRING,
+                  .cls = TokenClass::C_LITERAL
                 });
                 buffer.reset();
                 start++;

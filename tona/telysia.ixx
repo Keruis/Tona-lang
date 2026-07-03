@@ -53,8 +53,7 @@ export namespace Tona {
 
         for (const auto& tok : tokens) {
           std::string value_str;
-          auto cls = tokens_info[static_cast<std::size_t>(tok.type)].cls;
-          switch (cls) {
+          switch (tok.cls) {
             case TokenClass::C_END:
             case TokenClass::C_IDENTIFIER:
             case TokenClass::C_LITERAL:
@@ -71,7 +70,7 @@ export namespace Tona {
               value_str = std::format("{}", static_cast<char>(tok.type));
           }
 
-          out << std::format("│ {:<12} │ {:<41} │\n", get_class_name(cls), value_str);
+          out << std::format("│ {:<12} │ {:<41} │\n", get_class_name(tok.cls), value_str);
         }
 
         out << "└──────────────​┴───────────────────────────────────────────┘\n\n";

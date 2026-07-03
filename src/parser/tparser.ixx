@@ -17,7 +17,7 @@ export namespace Tona {
       void parse(std::span<const Token> tokens) {
         const Token* cur = tokens.data();
 
-        switch (tokens_info[cast_u8(cur->type)].cls) {
+        switch (cur->cls) {
           case TokenClass::C_IDENTIFIER:
           case TokenClass::C_KEYWORD:
           case TokenClass::C_LITERAL:
