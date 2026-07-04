@@ -217,7 +217,7 @@ export namespace Tona {
 
     private:
       [[nodiscard]] [[gnu::always_inline]] inline char parse_identifier(const char*& cur, std::pmr::vector<Token>& tokens) {
-        std::string_view identifier(cur, identifier_char(cur));
+        const std::string_view identifier(cur, identifier_char(cur));
         if (
           auto res = find_keyword(identifier); 
           res == TokenType::T_IDENTIFIER
@@ -240,68 +240,52 @@ export namespace Tona {
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline bool parse_div(const char*& cur, std::pmr::vector<Token>& tokens) {
-        if (*++cur == '/') {
-          do {
-            cur++;
-          } while (*cur != '\n' && *cur != '\0');
-        } else if (*cur == '*') {
-          while (true) {
-            cur++;
-            if (*cur == '\0') [[unlikely]]
-              return false;
-            if (*cur == '*' && cur[1] == '/')
-              break;
-          }
-          cur += 2;
-        } else tokens.push_back({
-            .start = cur - 1,
-            .type = TokenType::T_OPERATORS_DIV,
-            .cls = TokenClass::C_OPERATOR,
-            .precedence = get_prec(static_cast<TokenType>(*cur))
-          });
-        return true;
+        switch (*++cur) {
+          case '/':
+            skip_line_comment(cur);
+            return true;
+          case '*':
+            return skip_block_comment(cur);
+          default:
+            tokens.push_back({
+              .start = cur - 1,
+              .type = TokenType::T_OPERATORS_DIV,
+              .cls = TokenClass::C_OPERATOR,
+              .precedence = get_prec(TokenType::T_OPERATORS_DIV)
+            });
+            return true;
+        }
       } 
 
       template <TokenClass cls>
       [[nodiscard]] [[gnu::always_inline]] inline char parse_single_char(const char*& cur, std::pmr::vector<Token>& tokens) {
+        const TokenType type = static_cast<TokenType>(*cur);
+        std::uint8_t prec = 0;
         if constexpr (cls == TokenClass::C_OPERATOR)
-          tokens.push_back({
-            .start = cur,
-            .type = static_cast<TokenType>(*cur),
-            .cls = cls,
-            .precedence = get_prec(static_cast<TokenType>(*cur))
-          });
-        else tokens.push_back({
-            .start = cur,
-            .type = static_cast<TokenType>(*cur),
-            .cls = cls,
-          });
+          prec = get_prec(type);
+        tokens.push_back({
+          .start = cur,
+          .type = type,
+          .cls = cls,
+          .precedence = prec
+        });
         return *++cur;
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline char parse_double_char(const char*& cur, std::pmr::vector<Token>& tokens) {
-        if (cur[1] == '=') {
-          tokens.push_back({
-            .start = cur,
-            .type = static_cast<TokenType>(*cur + double_char_offset),
-            .cls = TokenClass::C_OPERATOR,
-            .precedence = get_prec(static_cast<TokenType>(*cur + double_char_offset))
-          });
-          cur += 2;
-        } else {
-          tokens.push_back({
-            .start = cur,
-            .type = static_cast<TokenType>(*cur),
-            .cls = TokenClass::C_OPERATOR,
-            .precedence = get_prec(static_cast<TokenType>(*cur))
-          });
-          cur++;
-        }
-        return *cur;
+        const std::uint8_t is_double = (cur[1] == '=');
+        const TokenType type = static_cast<TokenType>(*cur + is_double * double_char_offset);
+        tokens.push_back({
+          .start = cur,
+          .type = type,
+          .cls = TokenClass::C_OPERATOR,
+          .precedence = get_prec(type)
+        });
+        return *(cur += 1 + is_double);
       }
 
       [[nodiscard]] LexError parse_invalid_char(const char* cur) noexcept {
-        std::size_t len = std::countl_one(static_cast<std::uint8_t>(*cur));
+        std::size_t len = std::countl_one(cast_u8(*cur));
         len = (len == 0 || len > 4) ? 1 : len;
         return make_error(
           LexErrorType::LET_INVALID_CHAR,
@@ -319,6 +303,23 @@ export namespace Tona {
       }
 
     private:
+      [[gnu::always_inline]] inline void skip_line_comment(const char*& cur) noexcept {
+        do {
+          cur++;
+        } while (*cur != '\n' && *cur != '\0');
+      }
+
+      [[nodiscard]] bool skip_block_comment(const char*& cur) noexcept {
+        while (*cur) {
+          if (*cur == '*' && cur[1] == '/') {
+            cur += 2;
+            return true;
+          }
+          cur++;
+        }
+        return false;
+      }
+
       template <auto PredFunc, typename FT = decltype(PredFunc)>
       [[gnu::always_inline]] inline void consume_digit_sequence(const char*& start) noexcept {
         if constexpr (std::predicate<FT, decltype(*start)>) {
