@@ -7,6 +7,7 @@ import tona.byte;
 export namespace Tona {
 
   constexpr std::uint8_t double_char_offset = 93;
+  constexpr std::uint8_t suf_offset = 1;
 
   enum class TokenType : std::uint8_t {
     T_END = 0,
@@ -44,9 +45,16 @@ export namespace Tona {
     T_KEYWORD_RETURN = 166,
 
     T_LITERALS_INT = 220,
-    T_LITERALS_FLOAT = 221,
-    T_LITERALS_INT_SUF = 222,
+    T_LITERALS_INT_SUF = 221,
+    T_LITERALS_FLOAT = 222,
     T_LITERALS_FLOAT_SUF = 223,
+    T_LITERALS_BIN = 224,
+    T_LITERALS_BIN_SUF = 225,
+    T_LITERALS_HEX = 226,
+    T_LITERALS_HEX_SUF = 227,
+    T_LITERALS_OCT = 228,
+    T_LITERALS_OCT_SUF = 229,
+    
     T_LITERALS_STRING = 224,
     _ = 255
   };
@@ -96,10 +104,15 @@ export namespace Tona {
   }
 
   struct alignas(8) Token {
-    struct {
-      const char* data;
-      std::size_t len;
-    } text;
+    union {
+      struct {
+        const char* data;
+        std::size_t len;
+      } text;
+      std::uint64_t i;
+      float f32;
+      double f64;
+    };
     const char* start;
     TokenType type;
     TokenClass cls;

@@ -65,7 +65,8 @@ export namespace Tona {
             case 'u': case 'U':
             case 'i': case 'I': 
               goto pn_suf_num_i;
-            case 'f': case 'F':  
+            case 'f': case 'F':
+              num_type = TokenType::T_LITERALS_FLOAT;
               goto pn_suf_num_f;
             [[unlikely]] case '\'': return make_error(
                 LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
@@ -115,16 +116,19 @@ export namespace Tona {
         pn_bin_prefix:
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
+          num_type = TokenType::T_LITERALS_BIN;
           goto pn_end;
           
         pn_oct_prefix:
           if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
+          num_type = TokenType::T_LITERALS_OCT;
           goto pn_end;
 
         pn_hex_prefix:
           if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
+          num_type = TokenType::T_LITERALS_HEX;
           goto pn_end;
 
         pn_franction_direct:
@@ -152,16 +156,11 @@ export namespace Tona {
           switch (*cur) {
             case 'u': case 'U':
             case 'i': case 'I':
-        pn_suf_num_i:
-              if (num_type != TokenType::T_LITERALS_INT) [[unlikely]]
-                goto pn_error_suffix_type;
-              cur++;
-              num_type = TokenType::T_LITERALS_INT_SUF;
-              goto pn_suf_num;
             case 'f': case 'F':
+        pn_suf_num_i:
         pn_suf_num_f:
-              cur++;      
-              num_type = TokenType::T_LITERALS_FLOAT_SUF; 
+              cur++;     
+              num_type = static_cast<TokenType>(cast_u8(num_type) + suf_offset); 
               goto pn_suf_num;
             default: goto pn_save;
           }
@@ -170,15 +169,20 @@ export namespace Tona {
           while (is_dec_char(*cur))
             cur++;
         pn_save:
-          tokens.push_back({
-            .text = {
-              .data = start_ptr, 
-              .len = cast_usize(cur - start_ptr)
-            },
-            .start = start_ptr,
-            .type = num_type,
-            .cls = TokenClass::C_LITERAL
-          });
+
+
+
+
+        
+          // tokens.push_back({
+          //   .text = {
+          //     .data = start_ptr, 
+          //     .len = cast_usize(cur - start_ptr)
+          //   },
+          //   .start = start_ptr,
+          //   .type = num_type,
+          //   .cls = TokenClass::C_LITERAL
+          // });
 
           num_type = TokenType::T_LITERALS_INT;
           goto *labels[cast_u8(*cur)];
