@@ -109,9 +109,10 @@ export namespace Tona {
         const char* data;
         std::size_t len;
       } text;
-      std::uint64_t i;
-      float f32;
-      double f64;
+      struct {
+        std::uint64_t val;
+        char suf[8];
+      } num;
     };
     const char* start;
     TokenType type;

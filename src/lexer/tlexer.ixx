@@ -1,3 +1,7 @@
+module;
+#include <cassert>
+#include <cstddef>
+#include <cstring>
 export module tona.lexer;
 
 import std;
@@ -16,6 +20,8 @@ export namespace Tona {
         const char* cur = text.data();
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
+        std::uint64_t val;
+        char suf[8]{};
 
         static constexpr void* labels[256] = {
           #include "lexer_label.inc"
@@ -76,9 +82,8 @@ export namespace Tona {
               if (is_identifier_char(*cur)) [[unlikely]]
                 goto pn_error_invalid_numeric;
               tokens.push_back({
-                .text = {
-                  .data = start_ptr, 
-                  .len = cast_usize(cur - start_ptr)
+                .num {
+                  .val = scan_int<10>(start_ptr, cur),
                 },
                 .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT,
@@ -113,22 +118,26 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
 
+
         pn_bin_prefix:
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_BIN;
+          val = scan_int<2>(start_ptr, cur);
           goto pn_end;
           
         pn_oct_prefix:
           if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_OCT;
+          val = scan_int<8>(start_ptr, cur);
           goto pn_end;
 
         pn_hex_prefix:
           if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_HEX;
+          val = scan_int<16>(start_ptr, cur);
           goto pn_end;
 
         pn_franction_direct:
@@ -148,6 +157,7 @@ export namespace Tona {
             >(cur);
           }
           num_type = TokenType::T_LITERALS_FLOAT;
+          val = std::bit_cast<std::uint64_t>(scan_float(start_ptr, cur));
 
         pn_end:
           if (*cur == '\'') [[unlikely]]
@@ -159,30 +169,26 @@ export namespace Tona {
             case 'f': case 'F':
         pn_suf_num_i:
         pn_suf_num_f:
-              cur++;     
+              suf[0] = *cur++;
               num_type = static_cast<TokenType>(cast_u8(num_type) + suf_offset); 
               goto pn_suf_num;
             default: goto pn_save;
           }
 
         pn_suf_num:
-          while (is_dec_char(*cur))
-            cur++;
+          for (std::size_t i = 1; is_dec_char(*cur); i++, cur++)
+            suf[i] = *cur;
         pn_save:
-
-
-
-
-        
-          // tokens.push_back({
-          //   .text = {
-          //     .data = start_ptr, 
-          //     .len = cast_usize(cur - start_ptr)
-          //   },
-          //   .start = start_ptr,
-          //   .type = num_type,
-          //   .cls = TokenClass::C_LITERAL
-          // });
+          tokens.push_back({
+            .num = {
+              .val = val
+            },
+            .start = start_ptr,
+            .type = num_type,
+            .cls = TokenClass::C_LITERAL
+          });
+          std::memcpy(tokens.back().num.suf, suf, 8);
+          std::memset(suf, 0, 8);
 
           num_type = TokenType::T_LITERALS_INT;
           goto *labels[cast_u8(*cur)];
@@ -421,10 +427,11 @@ export namespace Tona {
                     case 'a': cur = '\a'; break;
                     case 'x':
                       for (std::size_t i = 0; i < 2 && is_hex_char(*start); i++, start++) {
+                        const char c = *start;
                         cur = cur * 16 + (
-                          (*start <= '9') ? 
-                          (*start -  '0') : 
-                          ((*start | 0x20) - 'a' + 10)
+                          (c <= '9') ? 
+                          (c -  '0') : 
+                          ((c | 0x20) - 'a' + 10)
                         );
                       }
                       break;
@@ -450,6 +457,36 @@ export namespace Tona {
             }
           } else start += 8;
         }
+      }
+
+      template <std::size_t Base>
+      [[nodiscard]] [[gnu::always_inline]] inline std::uint64_t scan_int(const char* start, const char* end) noexcept {
+        std::uint64_t val = 0;
+        for (; start != end; start++) {
+          const char c = *start;
+          if (c == '\'') [[unlikely]]
+            continue;
+          val = val * Base + (
+            (c <= '9') ? 
+            (c -  '0') : 
+            ((c | 0x20) - 'a' + 10)
+          );
+        }
+        return val;
+      }
+
+      [[nodiscard]] [[gnu::always_inline]] inline double scan_float(const char* start, const char* end) noexcept {
+        assert(end - start < 64);
+        char buf[64];
+        std::size_t n = 0;
+        for (; start != end && n < 63; start++) {
+          if (*start == '\'') [[unlikely]]
+            break;
+          buf[n++] = *start;
+        }
+        double val;
+        std::from_chars(buf, buf + n, val);
+        return val;
       }
     
     private:
