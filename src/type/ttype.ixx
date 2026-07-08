@@ -8,10 +8,15 @@ export namespace Tona {
 
   };
 
-  enum ModifierFlags : std::uint8_t {
-    MF_NONE   = 0,
-    MF_CONST  = 1 << 0,
-    MF_STATIC = 1 << 1,
+  enum StorageSpecifiers : std::uint8_t {
+    SS_NONE = 0,
+    SS_STATIC = 1 << 0
+  };
+
+  enum TypeQualifiers : std::uint8_t {
+    TQ_NONE = 0,
+    TQ_CONST = 1 << 0,
+    TQ_IMME = 1 << 1
   };
 
 }

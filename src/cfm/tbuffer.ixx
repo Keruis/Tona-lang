@@ -30,8 +30,10 @@ export namespace Tona {
         delete[] buf;
       }
 
-      void stuff_set(std::uint8_t b, std::size_t i) noexcept {
+      void stuff_set(std::uint8_t b, std::size_t i) {
+        reserve(i);
         buf[i] = b;
+        size = (size < i ? i : size);
       }
 
       template <typename T>

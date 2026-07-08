@@ -20,7 +20,8 @@ export namespace Tona {
 
   struct VarDeclNode {
     StmtNodeType type = StmtNodeType::SNT_VAR_DECL;
-    ModifierFlags mf  = ModifierFlags::MF_NONE;
+    StorageSpecifiers ss = StorageSpecifiers::SS_NONE;
+    TypeQualifiers tq = TypeQualifiers::TQ_NONE;
     ExprNodeType init = ExprNodeType::ENT_NONE;
   };
   

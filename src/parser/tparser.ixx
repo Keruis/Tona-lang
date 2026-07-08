@@ -3,6 +3,7 @@ export module tona.parser;
 import std;
 
 import tona.byte;
+import tona.type;
 import tona.token;
 
 export namespace Tona {
@@ -58,7 +59,18 @@ export namespace Tona {
       }
 
     private:
+      StorageSpecifiers parse_storage_specifiers(const Token*& tokens) {
+        
+      }
       
+      TypeQualifiers parse_type_qualifiers(const Token*& tokens) {
+        // while (tokens->type >= type_qualifier_start && tokens->type <= type_qualifier_end) {
+        //   switch (tokens->type) {
+        //     case TokenType::T_KEYWORD_CONST:
+        //     case TokenType::T_KEYWORD_IMME:
+        //   }
+        // }
+      }
 
   };
 

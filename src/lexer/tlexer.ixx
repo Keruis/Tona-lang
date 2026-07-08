@@ -1,7 +1,3 @@
-module;
-
-#include <cassert>
-
 export module tona.lexer;
 
 import std;
@@ -95,9 +91,9 @@ export namespace Tona {
 
         l_string:
           start_ptr = cur;
-          if (!read_string(++cur, tokens, ca)) [[unlikely]]
+          if (auto res = read_string(++cur, tokens, ca); res != LexErrorType::LET_NONE) [[unlikely]]
             return make_error(
-              LexErrorType::LET_UNTERMINATED_STRING,
+              res,
               start_ptr, cur
             );
 
@@ -360,7 +356,7 @@ export namespace Tona {
         return true;
       }
 
-      [[nodiscard]] [[gnu::always_inline]] inline bool read_string(const char*& start, std::pmr::vector<Token>& tokens, Arena& arena) {
+      [[nodiscard]] [[gnu::always_inline]] inline LexErrorType read_string(const char*& start, std::pmr::vector<Token>& tokens, Arena& arena) {
         const char* const start_ptr = start;
         const char* prev_ptr = start;
 
@@ -407,7 +403,7 @@ export namespace Tona {
                 });
                 buffer.reset();
                 start++;
-                return true;
+                return LexErrorType::LET_NONE;
               }
 
               buffer.stuff_back(prev_ptr, start - prev_ptr);
@@ -437,9 +433,13 @@ export namespace Tona {
                     default:
                       start--;
                       if (std::size_t i = 2; is_oct_char(*start)) {
+                        std::uint64_t val = 0;
                         do {
-                          cur = cur * 8 + (*start++ - '0');
+                          val = val * 8 + (*start++ - '0');
                         } while (i-- && is_oct_char(*start));
+                        if (val > 255) [[unlikely]]
+                          return LexErrorType::LET_INVALID_ESCAPE_SEQUENCE;
+                        cur = val;
                       } else cur = *start++;
                   }
                   buffer.stuff_back(cur);
@@ -447,7 +447,7 @@ export namespace Tona {
                 }
                 [[unlikely]] case '\0':
                 [[unlikely]] case '\n':
-                [[unlikely]] case '\r': return false;
+                [[unlikely]] case '\r': return LexErrorType::LET_UNTERMINATED_STRING;
                 default:
                   buffer.stuff_back(*start++);
               }
@@ -482,7 +482,9 @@ export namespace Tona {
           buffer.stuff_set(cast_u8(*start), n);
         }
         double val;
-        std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + n, val);
+        auto [_, ec] = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + n, val);
+        if (ec != std::errc{})
+          ;
         return val;
       }
     
