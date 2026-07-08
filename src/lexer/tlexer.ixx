@@ -20,8 +20,8 @@ export namespace Tona {
         const char* cur = text.data();
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
-        std::uint64_t val;
-        char suf[8]{};
+        std::uint64_t val = 0;
+        std::uint64_t suf = 0;
 
         static constexpr void* labels[256] = {
           #include "lexer_label.inc"
@@ -169,27 +169,27 @@ export namespace Tona {
             case 'f': case 'F':
         pn_suf_num_i:
         pn_suf_num_f:
-              suf[0] = *cur++;
+              cur++;
               num_type = static_cast<TokenType>(cast_u8(num_type) + suf_offset); 
               goto pn_suf_num;
             default: goto pn_save;
           }
 
         pn_suf_num:
-          for (std::size_t i = 1; is_dec_char(*cur); i++, cur++)
-            suf[i] = *cur;
+          while (is_dec_char(*cur))
+            suf = suf * 10 + (*cur++ - '0');
+            
         pn_save:
           tokens.push_back({
             .num = {
-              .val = val
+              .val = val,
+              .suf = suf
             },
             .start = start_ptr,
             .type = num_type,
             .cls = TokenClass::C_LITERAL
           });
-          std::memcpy(tokens.back().num.suf, suf, 8);
-          std::memset(suf, 0, 8);
-
+          suf = 0;
           num_type = TokenType::T_LITERALS_INT;
           goto *labels[cast_u8(*cur)];
 

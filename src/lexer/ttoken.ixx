@@ -111,7 +111,7 @@ export namespace Tona {
       } text;
       struct {
         std::uint64_t val;
-        char suf[8];
+        std::uint64_t suf;
       } num;
     };
     const char* start;
