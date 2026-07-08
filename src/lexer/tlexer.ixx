@@ -1,7 +1,7 @@
 module;
+
 #include <cassert>
-#include <cstddef>
-#include <cstring>
+
 export module tona.lexer;
 
 import std;
@@ -123,21 +123,21 @@ export namespace Tona {
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_BIN;
-          val = scan_int<2>(start_ptr, cur);
+          val = scan_int<2>(start_ptr + 2, cur);
           goto pn_end;
           
         pn_oct_prefix:
           if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_OCT;
-          val = scan_int<8>(start_ptr, cur);
+          val = scan_int<8>(start_ptr + 2, cur);
           goto pn_end;
 
         pn_hex_prefix:
           if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_HEX;
-          val = scan_int<16>(start_ptr, cur);
+          val = scan_int<16>(start_ptr + 2, cur);
           goto pn_end;
 
         pn_franction_direct:
@@ -178,7 +178,6 @@ export namespace Tona {
         pn_suf_num:
           while (is_dec_char(*cur))
             suf = suf * 10 + (*cur++ - '0');
-            
         pn_save:
           tokens.push_back({
             .num = {
@@ -222,7 +221,7 @@ export namespace Tona {
           );
 
         l_default:
-          return parse_invalid_char(cur);
+          return invalid_char(cur);
       }
 
     private:
@@ -294,7 +293,7 @@ export namespace Tona {
         return *(cur += 1 + is_double);
       }
 
-      [[nodiscard]] LexError parse_invalid_char(const char* cur) noexcept {
+      [[nodiscard]] LexError invalid_char(const char* cur) noexcept {
         std::size_t len = std::countl_one(cast_u8(*cur));
         len = (len == 0 || len > 4) ? 1 : len;
         return make_error(
@@ -476,16 +475,14 @@ export namespace Tona {
       }
 
       [[nodiscard]] [[gnu::always_inline]] inline double scan_float(const char* start, const char* end) noexcept {
-        assert(end - start < 64);
-        char buf[64];
         std::size_t n = 0;
-        for (; start != end && n < 63; start++) {
+        for (; start != end && n < 1023; start++, n++) {
           if (*start == '\'') [[unlikely]]
-            break;
-          buf[n++] = *start;
+            continue;
+          buffer.stuff_set(cast_u8(*start), n);
         }
         double val;
-        std::from_chars(buf, buf + n, val);
+        std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + n, val);
         return val;
       }
     

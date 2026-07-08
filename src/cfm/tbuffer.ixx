@@ -1,3 +1,5 @@
+module;
+#include <cstddef>
 export module tona.buf;
 
 import std;
@@ -26,6 +28,10 @@ export namespace Tona {
       }
       ~Buf() {
         delete[] buf;
+      }
+
+      void stuff_set(std::uint8_t b, std::size_t i) noexcept {
+        buf[i] = b;
       }
 
       template <typename T>
