@@ -4,6 +4,7 @@ import std;
 
 import tona.buf;
 import tona.byte;
+import tona.diag;
 import tona.token;
 import tona.error;
 import tona.arena;
@@ -12,7 +13,15 @@ export namespace Tona {
 
   class Lexer {
     public:
-      [[nodiscard]] LexError tokenize(std::string_view text, std::pmr::vector<Token>& tokens, Arena& ca) noexcept {
+      Lexer(Diagnostic& diag) 
+        : diag(diag) 
+      {}
+      Lexer(const Lexer&) = delete;
+      Lexer& operator=(const Lexer&) = delete;
+      Lexer(Lexer&&) = delete;
+      Lexer& operator=(Lexer&&) = delete;
+
+      void tokenize(std::string_view text, std::pmr::vector<Token>& tokens, Arena& ca) noexcept {
         const char* cur = text.data();
         const char* start_ptr = nullptr;
         TokenType num_type = TokenType::T_LITERALS_INT;
@@ -70,16 +79,13 @@ export namespace Tona {
             case 'f': case 'F':
               num_type = TokenType::T_LITERALS_FLOAT;
               goto pn_suf_num_f;
-            [[unlikely]] case '\'': return make_error(
-                LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
-                start_ptr, cur
-              );
+            [[unlikely]] case '\'': goto pn_error_digit_separator;
             default:
               if (is_identifier_char(*cur)) [[unlikely]]
                 goto pn_error_invalid_numeric;
               tokens.push_back({
                 .num {
-                  .val = scan_int<10>(start_ptr, cur),
+                  .val = scan_number<std::uint64_t>(start_ptr, cur),
                 },
                 .start = start_ptr,
                 .type = TokenType::T_LITERALS_INT,
@@ -93,6 +99,7 @@ export namespace Tona {
           start_ptr = cur;
           if (auto res = read_string(++cur, tokens, ca); res != LexErrorType::LET_NONE) [[unlikely]]
             return make_error(
+              ErrorLevel::EL_ERROR,
               res,
               start_ptr, cur
             );
@@ -108,6 +115,7 @@ export namespace Tona {
         l_div:
           if (!parse_div(cur, tokens)) [[unlikely]]
             return make_error(
+              ErrorLevel::EL_ERROR,
               LexErrorType::LET_UNCLOSE_COMMENT, 
               cur, 1
             );
@@ -119,21 +127,21 @@ export namespace Tona {
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_BIN;
-          val = scan_int<2>(start_ptr + 2, cur);
+          val = scan_number<std::uint64_t, 2>(start_ptr + 2, cur);
           goto pn_end;
           
         pn_oct_prefix:
           if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_OCT;
-          val = scan_int<8>(start_ptr + 2, cur);
+          val = scan_number<std::uint64_t, 8>(start_ptr + 2, cur);
           goto pn_end;
 
         pn_hex_prefix:
           if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           num_type = TokenType::T_LITERALS_HEX;
-          val = scan_int<16>(start_ptr + 2, cur);
+          val = scan_number<std::uint64_t, 16>(start_ptr + 2, cur);
           goto pn_end;
 
         pn_franction_direct:
@@ -153,17 +161,24 @@ export namespace Tona {
             >(cur);
           }
           num_type = TokenType::T_LITERALS_FLOAT;
-          val = std::bit_cast<std::uint64_t>(scan_float(start_ptr, cur));
+          val = std::bit_cast<std::uint64_t>(scan_number<double>(start_ptr, cur));
 
         pn_end:
           if (*cur == '\'') [[unlikely]]
             goto pn_error_digit_separator;
   
           switch (*cur) {
+        pn_suf_num_i:
+            val = scan_number<std::uint64_t>(start_ptr, cur);
             case 'u': case 'U':
             case 'i': case 'I':
+              if (num_type == TokenType::T_LITERALS_FLOAT) [[unlikely]]
+                make_error(
+                  ErrorLevel::EL_WARNING,
+                  LexErrorType::LET_INVALID_SUFFIX_TYPE,
+                  start_ptr, cur
+                );
             case 'f': case 'F':
-        pn_suf_num_i:
         pn_suf_num_f:
               cur++;
               num_type = static_cast<TokenType>(cast_u8(num_type) + suf_offset); 
@@ -189,30 +204,22 @@ export namespace Tona {
           goto *labels[cast_u8(*cur)];
 
         l_end:
-          tokens.push_back({
+          return tokens.push_back({
             .start = cur,
             .type = TokenType::T_END
           });
-
-          return {
-            .type = LexErrorType::LET_NONE
-          };
         
         pn_error_digit_separator:
           return make_error(
-            LexErrorType::LET_INVALID_NUMERIC_LITERAL,
+            ErrorLevel::EL_WARNING,
+            LexErrorType::LET_INVALID_DIGIT_SEPARATOR,
             start_ptr, cur
           );
         
         pn_error_invalid_numeric:
           return make_error(
+            ErrorLevel::EL_ERROR,
             LexErrorType::LET_INVALID_NUMERIC_LITERAL,
-            start_ptr, cur
-          );
-
-        pn_error_suffix_type:
-          return make_error(
-            LexErrorType::LET_INVALID_SUFFIX_TYPE,
             start_ptr, cur
           );
 
@@ -289,22 +296,22 @@ export namespace Tona {
         return *(cur += 1 + is_double);
       }
 
-      [[nodiscard]] LexError invalid_char(const char* cur) noexcept {
+      [[gnu::noinline]] void invalid_char(const char* cur) {
         std::size_t len = std::countl_one(cast_u8(*cur));
         len = (len == 0 || len > 4) ? 1 : len;
-        return make_error(
+        make_error(
+          ErrorLevel::EL_ERROR,
           LexErrorType::LET_INVALID_CHAR,
           cur, len
         );
       }
 
       template <typename... Args>
-        requires (std::constructible_from<std::string_view, Args...>)
-      [[nodiscard]] LexError make_error(LexErrorType type, Args&&... args) noexcept {
-        return {
-          .err_text = std::string_view(std::forward<Args>(args)...),
-          .type = type
-        };
+      [[gnu::noinline]] void make_error(ErrorLevel lv, LexErrorType type, Args&&... args) {
+        diag.push_lex_err(
+          lv, type,
+          std::forward<Args>(args)...
+        );
       }
 
     private:
@@ -451,44 +458,40 @@ export namespace Tona {
                 default:
                   buffer.stuff_back(*start++);
               }
-
               prev_ptr = start;
             }
           } else start += 8;
         }
       }
 
-      template <std::size_t Base>
-      [[nodiscard]] [[gnu::always_inline]] inline std::uint64_t scan_int(const char* start, const char* end) noexcept {
-        std::uint64_t val = 0;
-        for (; start != end; start++) {
-          const char c = *start;
-          if (c == '\'') [[unlikely]]
-            continue;
-          val = val * Base + (
-            (c <= '9') ? 
-            (c -  '0') : 
-            ((c | 0x20) - 'a' + 10)
-          );
-        }
-        return val;
-      }
-
-      [[nodiscard]] [[gnu::always_inline]] inline double scan_float(const char* start, const char* end) noexcept {
+      template <typename T, std::size_t Base = 10>
+      [[nodiscard]] [[gnu::always_inline]] inline T scan_number(const char* start, const char* end) {
         std::size_t n = 0;
         for (; start != end && n < 1023; start++, n++) {
           if (*start == '\'') [[unlikely]]
             continue;
-          buffer.stuff_set(cast_u8(*start), n);
+          buffer.stuff_back(cast_u8(*start));
         }
-        double val;
-        auto [_, ec] = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + n, val);
-        if (ec != std::errc{})
-          ;
+        T val;
+        std::from_chars_result res; 
+        if constexpr (std::is_floating_point_v<T>)
+          res = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + buffer.buf_size(), val);
+        else res = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + buffer.buf_size(), val, Base);
+        if (res.ec != std::errc{}) [[unlikely]] {
+          switch (res.ec) {
+            case std::errc::result_out_of_range:
+              make_error(ErrorLevel::EL_WARNING, LexErrorType::LET_OUT_OF_RANGE, start - n, end);
+              return std::numeric_limits<T>::max();
+            case std::errc::invalid_argument:
+            default:
+              std::unreachable();
+          }
+        }
         return val;
       }
     
     private:
+      Diagnostic& diag;
       Buf buffer{};
   };
 

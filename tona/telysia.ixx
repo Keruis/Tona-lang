@@ -19,17 +19,17 @@ export namespace Tona {
       int do_file(std::string_view file_path) {
         SourceFiles sf;
         Diagnostic diag;
-        Lexer lex{};
+        Lexer lex(diag);
         std::size_t file_idx = sf.registry_file(file_path);
         Arena arena(4096);
         Arena const_arena(4096);
         std::pmr::vector<Token> tokens(&arena);
         auto start = std::chrono::high_resolution_clock::now();
-        auto res = lex.tokenize(sf.text(file_idx), tokens, const_arena);
+        lex.tokenize(sf.text(file_idx), tokens, const_arena);
         auto end = std::chrono::high_resolution_clock::now();
         std::println("time: {}", std::chrono::duration_cast<std::chrono::microseconds>(end - start));
-        if (res.type != LexErrorType::LET_NONE)
-          diag.print_lex_err(file_idx, res, sf);
+        //if (res.type != LexErrorType::LET_NONE)
+          //diag.print_lex_err(file_idx, res, sf);
         print_token(tokens);
         return 0;
       }

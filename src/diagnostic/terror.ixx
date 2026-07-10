@@ -18,12 +18,14 @@ export namespace Tona {
     LET_INVALID_SUFFIX_TYPE,
     LET_INVALID_ESCAPE_SEQUENCE,
     LET_UNTERMINATED_STRING,
-    LET_UNCLOSE_COMMENT
+    LET_UNCLOSE_COMMENT,
+    LET_OUT_OF_RANGE
   };
 
   struct LexError {
     std::string_view err_text;
     LexErrorType type;
+    ErrorLevel lv;
   };
 
   // VM
