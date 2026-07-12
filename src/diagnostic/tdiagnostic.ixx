@@ -6,6 +6,7 @@ export module tona.diag;
 
 import std;
 
+import tona.token;
 import tona.error;
 import tona.sourcefile;
 
@@ -23,6 +24,14 @@ export namespace Tona {
         });
       }
 
+      void push_par_err(ErrorLevel lv, ParErrorType type, const Token& tok) {
+        par_errs.push_back({
+          .tok = tok,
+          .type = type,
+          .lv = lv
+        });
+      }
+
       [[noreturn]] void print_lex_err(std::size_t file_idx, const LexError& err, const SourceFiles& sf) {
         const auto ct = sf.find_char_table(file_idx, err.err_text.data());
         std::cerr << std::format(
@@ -34,6 +43,7 @@ export namespace Tona {
 
     private:
       std::vector<LexError> lex_errs;
+      std::vector<ParError> par_errs;
   };
 
 }

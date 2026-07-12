@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 export module tona.buf;
 
 import std;

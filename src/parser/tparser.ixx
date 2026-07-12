@@ -4,12 +4,18 @@ import std;
 
 import tona.byte;
 import tona.type;
+import tona.diag;
 import tona.token;
+import tona.error;
+import tona.bitflag;
 
 export namespace Tona {
 
   class Parser {
     public:
+      Parser(Diagnostic& diag) 
+        : diag(diag) 
+      {}
       Parser(const Parser&) = delete;
       Parser& operator=(const Parser&) = delete;
       Parser(Parser&&) = delete;
@@ -59,19 +65,55 @@ export namespace Tona {
       }
 
     private:
-      StorageSpecifiers parse_storage_specifiers(const Token*& tokens) {
-        
+      [[nodiscard]] StorageSpecifiers parse_storage_specifiers(const Token*& tokens) {
+        BitFlag<StorageSpecifiers> bf;
+        StorageSpecifiers tq;
+      loop:
+        switch (tokens->type) {
+          case TokenType::T_KEYWORD_STATIC:  
+            tq = StorageSpecifiers::SS_STATIC;
+      pr:
+          if (bf.add_if(tq)) [[unlikely]]
+            diag.push_par_err(
+              ErrorLevel::EL_ERROR, 
+              ParErrorType::PET_DUPLICATE_STORAGE_SPECIFIERS, 
+              *tokens
+            );
+          tokens++;
+          goto loop;    
+          default: goto end;
+        }
+      end:
+        return bf.value();
       }
       
-      TypeQualifiers parse_type_qualifiers(const Token*& tokens) {
-        // while (tokens->type >= type_qualifier_start && tokens->type <= type_qualifier_end) {
-        //   switch (tokens->type) {
-        //     case TokenType::T_KEYWORD_CONST:
-        //     case TokenType::T_KEYWORD_IMME:
-        //   }
-        // }
+      [[nodiscard]] TypeQualifiers parse_type_qualifiers(const Token*& tokens) {
+        BitFlag<TypeQualifiers> bf;
+        TypeQualifiers tq;
+      loop:
+        switch (tokens->type) {
+          case TokenType::T_KEYWORD_CONST: 
+            tq = TypeQualifiers::TQ_CONST;
+            goto pr;
+          case TokenType::T_KEYWORD_IMME:  
+            tq = TypeQualifiers::TQ_IMME;
+      pr:
+          if (bf.add_if(tq)) [[unlikely]]
+            diag.push_par_err(
+              ErrorLevel::EL_ERROR, 
+              ParErrorType::PET_DUPLICATE_TYPE_QUALIFIERS, 
+              *tokens
+            );
+          tokens++;
+          goto loop;    
+          default: goto end;
+        }
+      end:
+        return bf.value();
       }
 
+    private:
+      Diagnostic& diag;
   };
 
 }

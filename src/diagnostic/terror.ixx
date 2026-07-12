@@ -2,6 +2,8 @@ export module tona.error;
 
 import std;
 
+import tona.token;
+
 export namespace Tona {
 
   enum class ErrorLevel : std::uint8_t {
@@ -25,6 +27,19 @@ export namespace Tona {
   struct LexError {
     std::string_view err_text;
     LexErrorType type;
+    ErrorLevel lv;
+  };
+
+  // Parser
+  enum class ParErrorType : std::uint8_t {
+    PET_NONE,
+    PET_DUPLICATE_TYPE_QUALIFIERS,
+    PET_DUPLICATE_STORAGE_SPECIFIERS
+  };
+
+  struct ParError {
+    Token tok;
+    ParErrorType type;
     ErrorLevel lv;
   };
 
