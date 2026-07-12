@@ -1,3 +1,5 @@
+module;
+#include <initializer_list>
 export module tona.parser;
 
 import std;
@@ -66,49 +68,44 @@ export namespace Tona {
 
     private:
       [[nodiscard]] StorageSpecifiers parse_storage_specifiers(const Token*& tokens) {
-        BitFlag<StorageSpecifiers> bf;
-        StorageSpecifiers tq;
-      loop:
-        switch (tokens->type) {
-          case TokenType::T_KEYWORD_STATIC:  
-            tq = StorageSpecifiers::SS_STATIC;
-      pr:
-          if (bf.add_if(tq)) [[unlikely]]
-            diag.push_par_err(
-              ErrorLevel::EL_ERROR, 
-              ParErrorType::PET_DUPLICATE_STORAGE_SPECIFIERS, 
-              *tokens
-            );
-          tokens++;
-          goto loop;    
-          default: goto end;
-        }
-      end:
-        return bf.value();
+        return parse_flags<StorageSpecifiers, ParErrorType::PET_DUPLICATE_STORAGE_SPECIFIERS>(
+          tokens, 
+          {
+            {TokenType::T_KEYWORD_STATIC, StorageSpecifiers::SS_STATIC}
+          }
+        );
       }
       
       [[nodiscard]] TypeQualifiers parse_type_qualifiers(const Token*& tokens) {
-        BitFlag<TypeQualifiers> bf;
-        TypeQualifiers tq;
+        return parse_flags<TypeQualifiers, ParErrorType::PET_DUPLICATE_TYPE_QUALIFIERS>(
+          tokens, 
+          {
+            {TokenType::T_KEYWORD_CONST, TypeQualifiers::TQ_CONST},
+            {TokenType::T_KEYWORD_IMME, TypeQualifiers::TQ_IMME}
+          }
+        );
+      }
+
+    private:
+      template <typename E, ParErrorType ER>
+      [[nodiscard]] [[gnu::always_inline]] inline E parse_flags(
+        const Token*& tokens, 
+        std::initializer_list<std::pair<TokenType, E>> table
+      ) {
+        BitFlag<E> bf;
       loop:
-        switch (tokens->type) {
-          case TokenType::T_KEYWORD_CONST: 
-            tq = TypeQualifiers::TQ_CONST;
-            goto pr;
-          case TokenType::T_KEYWORD_IMME:  
-            tq = TypeQualifiers::TQ_IMME;
-      pr:
-          if (bf.add_if(tq)) [[unlikely]]
+        for (auto [type, flag] : table) {
+          if (tokens->type != type)
+            continue;
+          if (bf.add_if(flag)) [[unlikely]]
             diag.push_par_err(
               ErrorLevel::EL_ERROR, 
-              ParErrorType::PET_DUPLICATE_TYPE_QUALIFIERS, 
+              ER, 
               *tokens
             );
-          tokens++;
-          goto loop;    
-          default: goto end;
+          ++tokens;
+          goto loop;
         }
-      end:
         return bf.value();
       }
 
