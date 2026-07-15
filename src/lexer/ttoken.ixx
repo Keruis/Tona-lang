@@ -45,7 +45,7 @@ export namespace Tona {
     T_KEYWORD_RETURN = 166,
     T_KEYWORD_CONST = 167,
     T_KEYWORD_IMME = 168,
-    T_KEYWORD_STATIC = 168,
+    T_KEYWORD_STATIC = 169,
 
     T_LITERALS_INT = 220,
     T_LITERALS_INT_SUF = 221,
@@ -61,9 +61,6 @@ export namespace Tona {
     T_LITERALS_STRING = 224,
     _ = 255
   };
-
-  constexpr TokenType type_qualifier_start = TokenType::T_KEYWORD_CONST;
-  constexpr TokenType type_qualifier_end = TokenType::T_KEYWORD_IMME;
 
   enum class TokenClass : std::uint8_t {
     C_END = 0,

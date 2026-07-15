@@ -1,5 +1,3 @@
-module;
-#include <initializer_list>
 export module tona.parser;
 
 import std;
@@ -59,7 +57,18 @@ export namespace Tona {
 
     private:
       void parse_keyword(const Token*& tokens) {
-
+        switch (tokens->type) {
+          case TokenType::T_KEYWORD_IF:
+          case TokenType::T_KEYWORD_ELSE:
+          case TokenType::T_KEYWORD_FOR:
+          case TokenType::T_KEYWORD_RETURN:
+          case TokenType::T_KEYWORD_TRUE:
+          case TokenType::T_KEYWORD_FALSE:
+          case TokenType::T_KEYWORD_CONST:
+          case TokenType::T_KEYWORD_IMME:
+          case TokenType::T_KEYWORD_STATIC:
+          default:
+        }
       }
 
       void parse_identifier(const Token*& tokens) {
@@ -68,46 +77,51 @@ export namespace Tona {
 
     private:
       [[nodiscard]] StorageSpecifiers parse_storage_specifiers(const Token*& tokens) {
-        return parse_flags<StorageSpecifiers, ParErrorType::PET_DUPLICATE_STORAGE_SPECIFIERS>(
-          tokens, 
-          {
-            {TokenType::T_KEYWORD_STATIC, StorageSpecifiers::SS_STATIC}
-          }
-        );
+        BitFlag<StorageSpecifiers> bf;
+      loop:
+        switch (tokens->type) {
+          case TokenType::T_KEYWORD_STATIC:
+            if (bf.add_if(StorageSpecifiers::SS_STATIC)) [[unlikely]]
+              diag.push_par_err(
+                ErrorLevel::EL_ERROR, 
+                ParErrorType::PET_DUPLICATE_STORAGE_SPECIFIERS, 
+                *tokens
+              );
+            tokens++;
+          goto loop;
+          default: goto end; 
+        }
+      end:
+        return bf.value();
       }
       
       [[nodiscard]] TypeQualifiers parse_type_qualifiers(const Token*& tokens) {
-        return parse_flags<TypeQualifiers, ParErrorType::PET_DUPLICATE_TYPE_QUALIFIERS>(
-          tokens, 
-          {
-            {TokenType::T_KEYWORD_CONST, TypeQualifiers::TQ_CONST},
-            {TokenType::T_KEYWORD_IMME, TypeQualifiers::TQ_IMME}
-          }
-        );
+        BitFlag<TypeQualifiers> bf;
+        TypeQualifiers tq;
+      loop:
+        switch (tokens->type) {
+          case TokenType::T_KEYWORD_CONST:
+            tq = TypeQualifiers::TQ_CONST;
+            break;
+          case TokenType::T_KEYWORD_IMME:
+            tq = TypeQualifiers::TQ_IMME;
+            break;
+          default: goto end; 
+        }
+        if (bf.add_if(tq)) [[unlikely]]
+          diag.push_par_err(
+            ErrorLevel::EL_ERROR, 
+            ParErrorType::PET_DUPLICATE_TYPE_QUALIFIERS, 
+            *tokens
+          );
+        tokens++;
+        goto loop;
+      end:
+        return bf.value();
       }
 
     private:
-      template <typename E, ParErrorType ER>
-      [[nodiscard]] [[gnu::always_inline]] inline E parse_flags(
-        const Token*& tokens, 
-        std::initializer_list<std::pair<TokenType, E>> table
-      ) {
-        BitFlag<E> bf;
-      loop:
-        for (auto [type, flag] : table) {
-          if (tokens->type != type)
-            continue;
-          if (bf.add_if(flag)) [[unlikely]]
-            diag.push_par_err(
-              ErrorLevel::EL_ERROR, 
-              ER, 
-              *tokens
-            );
-          ++tokens;
-          goto loop;
-        }
-        return bf.value();
-      }
+
 
     private:
       Diagnostic& diag;
