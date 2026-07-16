@@ -2,6 +2,7 @@ export module tona.token;
 
 import std;
 
+import tona.string;
 import tona.byte;
 
 export namespace Tona {
@@ -110,10 +111,7 @@ export namespace Tona {
 
   struct alignas(8) Token {
     union {
-      struct {
-        const char* data;
-        std::size_t len;
-      } text;
+      StringView text;
       struct {
         std::uint64_t val;
         std::uint64_t suf;

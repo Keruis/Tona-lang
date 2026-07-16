@@ -122,7 +122,6 @@ export namespace Tona {
 
           goto *labels[cast_u8(*cur)];
 
-
         pn_bin_prefix:
           if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
             goto pn_error_invalid_numeric;

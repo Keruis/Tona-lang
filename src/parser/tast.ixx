@@ -2,16 +2,20 @@ export module tona.ast;
 
 import std;
 
-import tona.type;
+import tona.byte;
 import tona.expr;
 import tona.stmt;
+import tona.arena;
 
 export namespace Tona {
 
-  struct VarDeclNode {
-    StorageSpecifiers ss = StorageSpecifiers::SS_NONE;
-    TypeQualifiers tq = TypeQualifiers::TQ_NONE;
-    ExprNodeType init = ExprNodeType::ENT_NONE;
+  struct AST {
+    Arena data;
+
+    template <typename T>
+    T* push_raw(T&& val) {
+      return data.create<T>(val);
+    }
   };
-  
+
 }
