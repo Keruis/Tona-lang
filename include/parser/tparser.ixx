@@ -68,6 +68,7 @@ export namespace Tona {
           case TokenType::T_KEYWORD_IMME:
           case TokenType::T_KEYWORD_STATIC:
           default:
+            break;
         }
       }
 

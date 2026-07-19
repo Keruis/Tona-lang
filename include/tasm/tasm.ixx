@@ -5,6 +5,7 @@ import std;
 import tona.byte;
 import tona.arena;
 import tona.opcode;
+import tona.string;
 import tona.asm_err;
 import tona.asm_token;
 
@@ -96,7 +97,8 @@ export namespace Tona {
 
             case '"':
 
-            
+            default:
+              break;
           }
 
         }

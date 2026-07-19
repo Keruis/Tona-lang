@@ -1,16 +1,15 @@
-export module tona.byte;
+export module tona.string;
 
 import std;
 
+import tona.byte;
+
 export namespace Tona {
 
-  [[nodiscard]] constexpr std::uint8_t cast_u8(auto val) {
-    return static_cast<std::uint8_t>(val);
-  }
-
-  [[nodiscard]] constexpr std::size_t cast_usize(auto val) {
-    return static_cast<std::size_t>(val);
-  }
+  struct StringView {
+    const char* data;
+    std::size_t len;
+  };
 
   struct SWAR64 {
     static constexpr std::uint64_t all_bytes_one = 0x0101010101010101ULL;

@@ -11,22 +11,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
 
-file(GLOB_RECURSE ALL_IXX_FILES CONFIGURE_DEPENDS 
+file(GLOB_RECURSE ALL_INCLUDE_FILES CONFIGURE_DEPENDS 
+  "include/*.ixx"
+)
+
+file(GLOB_RECURSE ALL_SRC_FILES CONFIGURE_DEPENDS 
   "src/*.ixx"
 )
 
 add_executable(tona
   tona/tona.cpp
+  ${ALL_SRC_FILES}
 )
 
 target_sources(tona
   PUBLIC
   FILE_SET CXX_MODULES FILES
   tona/telysia.ixx
-  ${ALL_IXX_FILES}
+  ${ALL_INCLUDE_FILES}
 )
 
 target_compile_options(tona PRIVATE
-  -save-temps=obj
   -fverbose-asm
 )
