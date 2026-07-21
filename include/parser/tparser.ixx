@@ -32,7 +32,17 @@ export namespace Tona {
       [[nodiscard]] TypeQualifiers parse_type_qualifiers(const Token*& tokens);
 
     private:
+      void parse_var_decl(const Token*& tokens);
 
+    private:
+      template <TokenType... ts>
+      [[nodiscard]] bool any_of(TokenType type) const noexcept;
+      template <TokenType... ts>
+      [[nodiscard]] bool all_of(TokenType type) const noexcept;
+      template <TokenClass... ts>
+      [[nodiscard]] bool any_of_cls(TokenClass cls) const noexcept;
+      template <TokenClass... ts>
+      [[nodiscard]] bool all_of_cls(TokenClass cls) const noexcept;
 
     private:
       Diagnostic& diag;

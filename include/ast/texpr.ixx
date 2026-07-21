@@ -21,7 +21,6 @@ export namespace Tona {
 
     struct ExprBase {
       const char* loc;
-      // type
     };
     
     struct LiteralExpr : public ExprBase {

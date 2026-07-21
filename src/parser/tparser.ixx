@@ -8,6 +8,7 @@ import tona.diag;
 import tona.token;
 import tona.error;
 import tona.bitflag;
+import tona.template_utils;
 
 namespace Tona {
 
@@ -56,6 +57,7 @@ namespace Tona {
       case TokenType::T_KEYWORD_CONST:
       case TokenType::T_KEYWORD_IMME:
       case TokenType::T_KEYWORD_STATIC:
+
       default:
         break;
     }
@@ -107,6 +109,32 @@ namespace Tona {
     goto loop;
   end:
     return bf.value();
+  }
+
+  void Parser::parse_var_decl(const Token*& tokens) {
+    const auto ss = parse_storage_specifiers(tokens);
+    const auto tq = parse_type_qualifiers(tokens);
+   
+  }
+
+  template <TokenType... ts>
+  [[nodiscard]] bool Parser::any_of(TokenType type) const noexcept {
+    return Utils::any_of<TokenType, ts...>(type);
+  }
+
+  template <TokenType... ts>
+  [[nodiscard]] bool Parser::all_of(TokenType type) const noexcept {
+    return Utils::all_of<TokenType, ts...>(type);
+  }
+
+  template <TokenClass... ts>
+  [[nodiscard]] bool Parser::any_of_cls(TokenClass cls) const noexcept {
+    return Utils::any_of<TokenClass, ts...>(cls);
+  }
+
+  template <TokenClass... ts>
+  [[nodiscard]] bool Parser::all_of_cls(TokenClass cls) const noexcept {
+    return Utils::all_of<TokenClass, ts...>(cls);
   }
 
 }
