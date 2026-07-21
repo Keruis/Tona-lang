@@ -104,18 +104,17 @@ export namespace Tona {
   }
 
   struct alignas(8) Token {
-    union {
-      StringView text;
-      struct {
-        std::uint64_t val;
-        std::uint64_t suf;
-      } num;
-    };
+    StringView text;
     const char* start;
     TokenType type;
     TokenClass cls;
     std::uint8_t precedence;
+    std::uint8_t suf;
   };
+
+  consteval {
+    static_assert(sizeof(Token) == 32);
+  }
 
   struct TokenContext {
     std::pmr::vector<std::pmr::vector<Token>> tokens;

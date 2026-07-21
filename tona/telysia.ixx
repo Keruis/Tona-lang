@@ -1,3 +1,5 @@
+module;
+#include <string_view>
 export module tona.elysia;
 
 import std;
@@ -61,17 +63,7 @@ export namespace Tona {
             case TokenClass::C_LITERAL:
               if (tok.type == TokenType::T_LITERALS_STRING)
                 value_str = std::format("\"{}\"", std::string_view(tok.text.data, tok.text.len));
-              else {
-                switch (tok.type) {
-                  case TokenType::T_LITERALS_INT:
-                  case TokenType::T_LITERALS_INT_SUF:
-                    value_str = std::format("i: {:#b} suf: {}", tok.num.val, tok.num.suf);
-                    break;
-                  case TokenType::T_LITERALS_FLOAT:
-                  case TokenType::T_LITERALS_FLOAT_SUF:
-                    value_str = std::format("f: {:#b} suf: {}", tok.num.val, tok.num.suf);
-                }
-              }
+              else value_str = std::format("{} : {}", std::string_view(tok.text.data, tok.text.len), tok.suf);
               break;
             case TokenClass::C_KEYWORD:
               value_str = std::format("kw_id({})", static_cast<int>(tok.type));

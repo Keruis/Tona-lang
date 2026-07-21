@@ -19,9 +19,9 @@ namespace Tona {
   void Lexer::tokenize(std::string_view text, std::pmr::vector<Token>& tokens, Arena& ca) {
     const char* cur = text.data();
     const char* start_ptr = nullptr;
+    const char* end_ptr = nullptr;
     TokenType num_type = TokenType::T_LITERALS_INT;
-    std::uint64_t val = 0;
-    std::uint64_t suf = 0;
+    std::uint8_t suf = 0;
 
     static constexpr void* labels[256] = {
       #include "lexer_label.inc"
@@ -79,8 +79,9 @@ namespace Tona {
           if (is_identifier_char(*cur)) [[unlikely]]
             goto pn_error_invalid_numeric;
           tokens.push_back({
-            .num {
-              .val = scan_number<std::uint64_t>(start_ptr, cur),
+            .text {
+              .data = start_ptr,
+              .len = cast_usize(cur - start_ptr)
             },
             .start = start_ptr,
             .type = TokenType::T_LITERALS_INT,
@@ -120,19 +121,16 @@ namespace Tona {
     pn_bin_prefix:
       if (!parse_radix_digits<is_bin_char, bin_char>(cur)) [[unlikely]]
         goto pn_error_invalid_numeric;
-      val = scan_number<std::uint64_t, 2>(start_ptr + 2, cur);
       goto pn_end;
       
     pn_oct_prefix:
       if (!parse_radix_digits<is_oct_char, is_oct_char>(cur)) [[unlikely]]
         goto pn_error_invalid_numeric;
-      val = scan_number<std::uint64_t, 8>(start_ptr + 2, cur);
       goto pn_end;
 
     pn_hex_prefix:
       if (!parse_radix_digits<is_hex_char, is_hex_char>(cur)) [[unlikely]]
         goto pn_error_invalid_numeric;
-      val = scan_number<std::uint64_t, 16>(start_ptr + 2, cur);
       goto pn_end;
 
     pn_franction_direct:
@@ -152,15 +150,15 @@ namespace Tona {
         >(cur);
       }
       num_type = TokenType::T_LITERALS_FLOAT;
-      val = std::bit_cast<std::uint64_t>(scan_number<double>(start_ptr, cur));
-
+      
     pn_end:
       if (*cur == '\'') [[unlikely]]
         goto pn_error_digit_separator;
-
+        
+      end_ptr = cur;
+      
       switch (*cur) {
     pn_suf_num_i:
-        val = scan_number<std::uint64_t>(start_ptr, cur);
         case 'u': case 'U':
         case 'i': case 'I':
           if (num_type == TokenType::T_LITERALS_FLOAT) [[unlikely]]
@@ -182,13 +180,14 @@ namespace Tona {
         suf = suf * 10 + (*cur++ - '0');
     pn_save:
       tokens.push_back({
-        .num = {
-          .val = val,
-          .suf = suf
+        .text = {
+          .data = start_ptr,
+          .len = cast_usize(end_ptr - start_ptr)
         },
         .start = start_ptr,
         .type = num_type,
-        .cls = TokenClass::C_LITERAL
+        .cls = TokenClass::C_LITERAL,
+        .suf = suf
       });
       suf = 0;
       num_type = TokenType::T_LITERALS_INT;
@@ -461,34 +460,8 @@ namespace Tona {
           }
           prev_ptr = start;
         }
-      } else start += 8;
+      } else start += Vec::size();
     }
-  }
-
-  template <typename T, std::size_t Base>
-  [[nodiscard]] T Lexer::scan_number(const char* start, const char* end) {
-    std::size_t n = 0;
-    for (; start != end && n < 1023; start++, n++) {
-      if (*start == '\'') [[unlikely]]
-        continue;
-      buffer.stuff_back(cast_u8(*start));
-    }
-    T val;
-    std::from_chars_result res; 
-    if constexpr (std::is_floating_point_v<T>)
-      res = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + buffer.buf_size(), val);
-    else res = std::from_chars(buffer.buffer<const char*>(), buffer.buffer<const char*>() + buffer.buf_size(), val, Base);
-    if (res.ec != std::errc{}) [[unlikely]] {
-      switch (res.ec) {
-        case std::errc::result_out_of_range:
-          make_error(ErrorLevel::EL_WARNING, LexErrorType::LET_OUT_OF_RANGE, start - n, end);
-          return std::numeric_limits<T>::max();
-        case std::errc::invalid_argument:
-        default:
-          std::unreachable();
-      }
-    }
-    return val;
   }
 
 }

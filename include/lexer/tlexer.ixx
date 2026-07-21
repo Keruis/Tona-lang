@@ -41,9 +41,7 @@ export namespace Tona {
       [[nodiscard]] bool parse_radix_digits(const char*& start)
         noexcept requires(std::predicate<FT1, decltype(*start)>);
       [[nodiscard]] LexErrorType read_string(const char*& start, std::pmr::vector<Token>& tokens, Arena& arena);
-      template <typename T, std::size_t Base = 10>
-      [[nodiscard]] T scan_number(const char* start, const char* end);
-    
+      
     private:
       Diagnostic& diag;
       Buf buffer{};
