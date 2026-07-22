@@ -111,30 +111,49 @@ namespace Tona {
     return bf.value();
   }
 
+  [[nodiscard]] std::string_view Parser::parse_type(const Token*& tokens) {
+    if (!any_of_cls<TokenClass::C_IDENTIFIER>(tokens)) [[unlikely]] {
+      //
+    }
+    auto type = tokens->to_str_view();
+    tokens++;
+    return type;
+  } 
+
+
   void Parser::parse_var_decl(const Token*& tokens) {
     const auto ss = parse_storage_specifiers(tokens);
     const auto tq = parse_type_qualifiers(tokens);
-   
+    if (!any_of_cls<TokenClass::C_IDENTIFIER>(*tokens)) [[unlikely]] {
+      //
+    }
+    std::string_view name = tokens->to_str_view();
+    tokens++;
+    std::string_view type;
+    if (any_of<TokenType::T_PUNCTUATORS_COLON>(tokens))
+      type = parse_type(tokens);
+    switch(tokens->type) {
+      case TokenType::T_PUNCTUATORS_SEMICOLON:
+        tokens++;
+        break;
+      case TokenType::T_OPERATORS_ASSIGN:
+        tokens++;
+        //
+      [[unlikely]] default: {
+        //
+      }
+    }
+    //
   }
 
   template <TokenType... ts>
-  [[nodiscard]] bool Parser::any_of(TokenType type) const noexcept {
-    return Utils::any_of<TokenType, ts...>(type);
-  }
-
-  template <TokenType... ts>
-  [[nodiscard]] bool Parser::all_of(TokenType type) const noexcept {
-    return Utils::all_of<TokenType, ts...>(type);
+  [[nodiscard]] bool Parser::any_of(const Token& tok) const noexcept {
+    return Utils::any_of<TokenType, ts...>(tok.type);
   }
 
   template <TokenClass... ts>
-  [[nodiscard]] bool Parser::any_of_cls(TokenClass cls) const noexcept {
-    return Utils::any_of<TokenClass, ts...>(cls);
-  }
-
-  template <TokenClass... ts>
-  [[nodiscard]] bool Parser::all_of_cls(TokenClass cls) const noexcept {
-    return Utils::all_of<TokenClass, ts...>(cls);
+  [[nodiscard]] bool Parser::any_of_cls(const Token& tok) const noexcept {
+    return Utils::any_of<TokenClass, ts...>(tok.cls);
   }
 
 }

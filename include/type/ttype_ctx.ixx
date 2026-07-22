@@ -15,8 +15,6 @@ export namespace Tona {
       TypeContext(TypeContext&&) = delete;
       TypeContext& operator=(TypeContext&&) = delete;
 
-      
-
     private:
   };
 

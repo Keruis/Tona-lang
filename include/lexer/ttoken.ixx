@@ -110,6 +110,10 @@ export namespace Tona {
     TokenClass cls;
     std::uint8_t precedence;
     std::uint8_t suf;
+
+    std::string_view to_str_view() const {
+      return std::string_view(text.data, text.len);
+    }
   };
 
   consteval {
