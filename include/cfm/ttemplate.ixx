@@ -7,13 +7,13 @@ export namespace Tona {
   namespace Utils {
   
     template <typename T, T... args>
-    bool any_of(T val) {
-      return (all_of<T, args>(val) || ...);
+    bool all_of(T val) {
+      return ((val == args) && ...);
     }
 
     template <typename T, T... args>
-    bool all_of(T val) {
-      return ((val == args) && ...);
+    bool any_of(T val) {
+      return (all_of<T, args>(val) || ...);
     }
     
   }

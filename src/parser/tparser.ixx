@@ -2,6 +2,7 @@ module tona.parser;
 
 import std;
 
+import tona.ast;
 import tona.byte;
 import tona.type;
 import tona.diag;
@@ -112,7 +113,7 @@ namespace Tona {
   }
 
   [[nodiscard]] std::string_view Parser::parse_type(const Token*& tokens) {
-    if (!any_of_cls<TokenClass::C_IDENTIFIER>(tokens)) [[unlikely]] {
+    if (!any_of_cls<TokenClass::C_IDENTIFIER>(*tokens)) [[unlikely]] {
       //
     }
     auto type = tokens->to_str_view();
@@ -130,7 +131,7 @@ namespace Tona {
     std::string_view name = tokens->to_str_view();
     tokens++;
     std::string_view type;
-    if (any_of<TokenType::T_PUNCTUATORS_COLON>(tokens))
+    if (any_of<TokenType::T_PUNCTUATORS_COLON>(*tokens))
       type = parse_type(tokens);
     switch(tokens->type) {
       case TokenType::T_PUNCTUATORS_SEMICOLON:

@@ -3,14 +3,13 @@ export module tona.ast;
 import std;
 
 import tona.byte;
-import tona.expr;
-import tona.stmt;
 import tona.arena;
 
 export namespace Tona {
 
   struct AST {
     Arena data;
+    std::size_t file_idx;
   };
 
   class ASTBuild {
@@ -19,11 +18,10 @@ export namespace Tona {
         : ast(ast)
       {}
 
-      void stmt_begin(StmtNodeType type);
-      void stmt_end();
-
-      template <typename T>
-      T* push_raw(T&& val);
+    template <typename T>
+    T* push_raw(T&& val) {
+      return ast.data.create<T>(std::move(val));
+    }
 
     private:
       AST& ast;
