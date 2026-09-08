@@ -1,7 +1,3 @@
-module;
-
-#include <simd>
-
 module tona.lexer;
 
 import std;
@@ -354,35 +350,23 @@ namespace Tona {
   [[nodiscard]] LexErrorType Lexer::read_string(const char*& start, std::pmr::vector<Token>& tokens, Arena& arena) {
     const char* const start_ptr = start;
     const char* prev_ptr = start;
-
-    using Vec = std::simd::vec<std::uint8_t>;
-
-    constexpr Vec ctrl_vec   = std::uint8_t{0x20};
-    constexpr Vec quote_vec  = std::uint8_t{'"'};
-    constexpr Vec escape_vec = std::uint8_t{'\\'};
-    constexpr Vec all_one    = std::uint8_t{1};
-    constexpr Vec msb_only   = std::uint8_t{0x80};
-
+    
     while (true) {
-      auto chunk = std::simd::unchecked_load<Vec>(
-        reinterpret_cast<const std::uint8_t*>(start), 
-        Vec::size()
-      );
+      std::uint64_t chunk_bytes;
+      std::memcpy(&chunk_bytes, start, 8);
 
-      auto ctrl_diff   = chunk - ctrl_vec;
-      auto quote_diff  = chunk ^ quote_vec;
-      auto escape_diff = chunk ^ escape_vec;
+      const std::uint64_t ctrl_diff   = chunk_bytes - SWAR64::char_mask<0x20>;
+      const std::uint64_t quote_diff  = chunk_bytes ^ SWAR64::char_mask<'"'>;
+      const std::uint64_t escape_diff = chunk_bytes ^ SWAR64::char_mask<'\\'>;
 
-      auto quote_minus_one  = quote_diff - all_one;
-      auto escape_minus_one = escape_diff - all_one;
+      const std::uint64_t quote_minus_one  = quote_diff - SWAR64::all_bytes_one;
+      const std::uint64_t escape_minus_one = escape_diff - SWAR64::all_bytes_one;
 
-      auto final_invalid_mask = (
-        (ctrl_diff | quote_minus_one | escape_minus_one) & ~chunk & msb_only
-      ) != Vec{};
+      const std::uint64_t final_invalid_flags = (ctrl_diff | quote_minus_one | escape_minus_one) & ~chunk_bytes & SWAR64::msb_only_mask;
 
-      if (std::simd::any_of(final_invalid_mask)) [[unlikely]] {
-        const char* end_ptr = start + Vec::size();
-        const std::size_t offset = std::simd::reduce_min_index(final_invalid_mask);
+      if (final_invalid_flags) [[unlikely]] {
+        const char* end_ptr = start + 8;
+        const std::size_t offset = match_offset(final_invalid_flags);
         start += offset;
         while (start < end_ptr) {
           if (*start == '"') [[likely]] {
@@ -460,7 +444,7 @@ namespace Tona {
           }
           prev_ptr = start;
         }
-      } else start += Vec::size();
+      } else start += 8;
     }
   }
 

@@ -16,7 +16,7 @@ file(GLOB_RECURSE ALL_INCLUDE_FILES CONFIGURE_DEPENDS
 )
 
 file(GLOB_RECURSE ALL_SRC_FILES CONFIGURE_DEPENDS 
-  "src/*.ixx"
+  "src/*.cpp"
 )
 
 add_executable(tona
@@ -32,5 +32,6 @@ target_sources(tona
 )
 
 target_compile_options(tona PRIVATE
+  -save-temps=obj
   -fverbose-asm
 )
