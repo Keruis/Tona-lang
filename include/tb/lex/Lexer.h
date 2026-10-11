@@ -4,14 +4,17 @@
 #include "../basic/Token.h"
 #include "../basic/LexDiagnostic.h"
 
+#include <cstddef>
 #include <span>
+#include <utility>
 
 namespace tb {
 
 class Lexer {
   public:
     Lexer(std::span<const char> source)
-      : source(source), cur(source.data()) {}
+      : source(source), cur(source.data()), end(&source.back()) 
+    {}
 
     void NextToken();
 
@@ -19,13 +22,22 @@ class Lexer {
     [[noreturn]] void Fail(std::string) const;
 
     bool AtEnd() const noexcept;
-    char32_t Peek() const noexcept;
+    char32_t PeekAt(std::size_t, std::size_t&) const;
+    char32_t Peek(std::size_t&) const;
+    char32_t PeekNext(std::size_t&) const;
+    void Advance(char32_t, std::size_t) noexcept;
+    char32_t SkipTrivia(std::size_t&);
+
+  private:
+    void EqualsSuffixOperator(char32_t) noexcept;
+    void RepeatedCharOperator(char32_t) noexcept;
 
   private:
     std::span<const char> source;
     token::Token tok{};
 
     const char* cur = nullptr;
+    const char* end = nullptr;
 };
 
 }
