@@ -1,0 +1,5 @@
+CompileFlags:
+  Add:
+    - -Wc23-extensions
+    - -std=c++26 
+    - -fconstexpr-steps=100000000
