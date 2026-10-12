@@ -14,7 +14,7 @@ namespace tb {
 
 [[noreturn]] void Lexer::Fail(std::string message) const {
   err::Diagnostic diag{
-    .message = message,
+    .message = std::move(message),
     .line = tok.location.line,
     .column = tok.location.column,
     .source_line = source_line({reinterpret_cast<const char*>(source.data()), source.size()}, tok.location.line)
@@ -29,15 +29,16 @@ bool Lexer::AtEnd() const noexcept {
 char32_t Lexer::PeekAt(std::size_t offset, std::size_t& length) const {
   char32_t cp;
   auto pos = cur;
-  while(pos != end) {
+  if (end - pos < offset)
+    return length = 0, U'\0';
+  while(true) {
     if (!unicode::DecodeAt(pos, end, cp, length))
       Fail("Lexer::PeekAt");
     if (!offset)
       return cp;
     pos += length;
     offset--; 
-  };
-  return length = 0, U'\0';
+  }
 }
 
 char32_t Lexer::Peek(std::size_t& length) const {
@@ -48,11 +49,14 @@ char32_t Lexer::PeekNext(std::size_t& length) const {
   return PeekAt(1, length);
 }
 
+void Lexer::AdvanceCursor(std::size_t length) noexcept {
+  cur += length;
+}
+
 void Lexer::Advance(char32_t cp, std::size_t length) noexcept {
   auto& line = tok.location.line;
   auto& column = tok.location.column;
-  static bool last_was_cr = false;
-  cur += length;
+  AdvanceCursor(length);
   switch (cp) {
     case U'\n':
       if (last_was_cr)
@@ -61,66 +65,72 @@ void Lexer::Advance(char32_t cp, std::size_t length) noexcept {
     case U'\u2028':
     case U'\u2029':
     case U'\u0085':
-      line++;
-      column = 1;
+      line_offset++;
+      column_offset = 0;
       break;
     default:
-      column++;
+      column_offset++;
   }
   last_was_cr = cp == U'\r';
 }
 
+void Lexer::UpdatePosition() noexcept {
+  tok.location.line += line_offset;
+  tok.location.column = line_offset 
+    ? tok.location.column 
+    : tok.location.column + column_offset;
+  line_offset = 0;
+  column_offset = 0;
+}
+
 char32_t Lexer::SkipTrivia(std::size_t& length) {
-  char32_t cp = U'\0';
   while (!AtEnd()) {
-    cp = Peek(length);
+    char32_t cp = Peek(length);
     if (unicode::IsUnicodeWhitespace(cp) || unicode::IsUnicodeLineTerminator(cp)) {
       Advance(cp, length);
       continue;
     }
     if (cp != U'/')
-      break;
+      return cp;
     std::size_t length_next;
     auto cp_next = PeekNext(length_next);
     if (cp_next == U'/') {
-      Advance(cp, length);
-      Advance(cp_next, length_next);
+      Advance(U'/', 1);
+      Advance(U'/', 1);
       while (!AtEnd() && !unicode::IsUnicodeLineTerminator(cp = Peek(length)))
         Advance(cp, length);
+      UpdatePosition();
       continue;
     }
     if (cp_next == U'*') {
       bool closed = false;
-      const std::size_t comment_line = tok.location.line;
-      const std::size_t comment_column = tok.location.column;
-      Advance(cp, length);
-      Advance(cp_next, length_next);
+      Advance(U'/', 1);
+      Advance(U'*', 1);
       while (!AtEnd()) {
         if ((cp = Peek(length)) == U'*' && (cp_next = PeekNext(length_next)) == U'/') {
-          Advance(cp, length);
-          Advance(cp_next, length_next);
+          Advance(U'*', 1);
+          Advance(U'/', 1);
           closed = true;
           break;
         }
         Advance(cp, length);
       }
-      if (!closed) [[unlikely]] {
-        tok.location.line = comment_line;
-        tok.location.column = comment_column;
+      if (!closed) [[unlikely]] 
         Fail("unterminated block comment");
-      }
+      UpdatePosition();
       continue;
     }
     return cp;
   }
-  length = 0;
-  return U'\0';
+  UpdatePosition();
+  return length = 0, U'\0';
 }
 
 void Lexer::EqualsSuffixOperator(char32_t cp) noexcept {
-  const auto start = cur;
-  bool equals_suffix = (end - cur) >= 1 && cur[1] == '=';
-  Advance(cp, 1 + equals_suffix);
+  bool equals_suffix = ((end - cur) >= 1) && cur[1] == '=';
+  std::size_t offset = 1 + equals_suffix;
+  AdvanceCursor(offset);
+  column_offset += offset;
   tok.cls = token::TokenClass::OPERATOR;
   tok.type = static_cast<token::TokenType>(
     cp + 
@@ -130,11 +140,12 @@ void Lexer::EqualsSuffixOperator(char32_t cp) noexcept {
 }
 
 void Lexer::RepeatedCharOperator(char32_t cp) noexcept {
-  const auto start = cur;
-  const bool has_remaining = (end - cur) >= 1;
-  bool repeat = has_remaining && cur[1] == cp;
-  bool equals_suffix = has_remaining && cur[1] == '=';
-  Advance(cp, 1 + (repeat || equals_suffix));
+  const char next_char = (end - cur) >= 1 && cur[1];
+  bool repeat = next_char == cp;
+  bool equals_suffix = next_char == '=';
+  std::size_t offset = 1 + (repeat || equals_suffix);
+  AdvanceCursor(offset);
+  column_offset += offset;
   tok.cls = token::TokenClass::OPERATOR;
   tok.type = static_cast<token::TokenType>(
     cp + 
@@ -144,17 +155,43 @@ void Lexer::RepeatedCharOperator(char32_t cp) noexcept {
   tok.location.length = cur - start;
 }
 
+void Lexer::Punctuation(char32_t cp) noexcept {
+  Advance(cp, 1);
+  tok.cls = token::TokenClass::PUNCTUATOR;
+  tok.type = static_cast<token::TokenType>(cp);
+  tok.location.length = cur - start;
+}
+
+void Lexer::Identifier(char32_t cp, std::size_t length) noexcept {
+  std::size_t consumed_length = length;
+  do {
+    Advance(cp, length);
+    cp = Peek(length);
+  } while ((cp == U'_' || unicode::IsXidContinue(cp)) && (consumed_length += length));
+  tok.cls = token::TokenClass::IDENTIFIER;
+  tok.type = token::TokenType::IDENTIFIER;
+  tok.text = {start, consumed_length};
+  tok.location.length = cur - start;
+}
+
+void Lexer::NumericLiteral(char32_t cp) {
+  
+}
+
 void Lexer::NextToken() {
-  char32_t cp;
+  UpdatePosition();
+  
   std::size_t length;
-  if (!(cp = SkipTrivia(length))) {
+  char32_t cp = SkipTrivia(length);
+  if (!length) {
     tok.type = token::TokenType::END;
     tok.cls = token::TokenClass::END;
     tok.text = {};
     tok.location.length = 0;
     return;
   }
-  
+
+  start = cur;
   switch (cp) {
     case U'0' ... U'9':
     
@@ -178,8 +215,10 @@ void Lexer::NextToken() {
     case U';':
     
     default:
+      if (cp == '_' || unicode::IsXidStart(cp))
+        return Identifier(cp, length);
   }
-
+  Fail("Lexer::NextToken");
 }
 
 }
