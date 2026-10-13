@@ -2,11 +2,9 @@
 #define __LEXER__H__
 
 #include "../basic/Token.h"
-#include "../basic/LexDiagnostic.h"
 
 #include <span>
 #include <cstddef>
-#include <utility>
 
 namespace tb {
 

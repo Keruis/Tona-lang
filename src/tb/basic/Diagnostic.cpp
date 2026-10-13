@@ -1,4 +1,4 @@
-#include "../../../include/tb/basic/Diagnostic.h"
+#include "basic/Diagnostic.h"
 
 namespace tb::err {
 

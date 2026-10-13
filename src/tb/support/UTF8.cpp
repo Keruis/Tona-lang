@@ -1,6 +1,6 @@
-#include "../../../include/tb/support/UTF8.h"
+#include "support/UTF8.h"
 
-#include "../../../include/utility/Algorithms.h"
+#include "utility/Algorithms.h"
 
 bool DecodeAt(const char* start, const char* end, char32_t& cp, std::size_t& length) noexcept {
   const auto first = static_cast<std::uint8_t>(*start);

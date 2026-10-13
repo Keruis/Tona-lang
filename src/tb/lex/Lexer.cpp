@@ -1,14 +1,12 @@
-#include "../../../include/tb/lex/Lexer.h"
+#include "lex/Lexer.h"
 
-#include "../../../include/tb/basic/LexDiagnostic.h"
+#include "basic/LexDiagnostic.h"
 
-#include "../../../include/tb/basic/Source.h"
+#include "basic/Source.h"
 
-#include "../../../include/tb/support/UTF8.h"
+#include "support/UTF8.h"
 
-#include "../../../include/tb/support/StringExtras.h"
-
-#include <cstddef>
+#include "support/StringExtras.h"
 
 namespace tb {
 
@@ -29,9 +27,7 @@ bool Lexer::AtEnd() const noexcept {
 char32_t Lexer::PeekAt(std::size_t offset, std::size_t& length) const {
   char32_t cp;
   auto pos = cur;
-  if (end - pos < offset)
-    return length = 0, U'\0';
-  while(true) {
+  while(pos != end) {
     if (!unicode::DecodeAt(pos, end, cp, length))
       Fail("Lexer::PeekAt");
     if (!offset)
@@ -39,6 +35,7 @@ char32_t Lexer::PeekAt(std::size_t offset, std::size_t& length) const {
     pos += length;
     offset--; 
   }
+  return length = 0, U'\0';
 }
 
 char32_t Lexer::Peek(std::size_t& length) const {
@@ -194,6 +191,7 @@ void Lexer::NextToken() {
   start = cur;
   switch (cp) {
     case U'0' ... U'9':
+      return NumericLiteral(cp);
     
     case U'"':
 
@@ -213,6 +211,7 @@ void Lexer::NextToken() {
     case U'[': case U']':
     case U',': case U':':
     case U';':
+      return Punctuation(cp);
     
     default:
       if (cp == '_' || unicode::IsXidStart(cp))
