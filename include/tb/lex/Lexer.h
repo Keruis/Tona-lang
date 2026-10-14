@@ -24,15 +24,20 @@ class Lexer {
     char32_t Peek(std::size_t&) const;
     char32_t PeekNext(std::size_t&) const;
     void AdvanceCursor(std::size_t) noexcept;
+    void AdvanceColumn(std::size_t) noexcept;
     void Advance(char32_t, std::size_t) noexcept;
     void UpdatePosition() noexcept;
+    void UpdateToken(token::TokenClass, token::TokenType, std::string_view);
     char32_t SkipTrivia(std::size_t&);
 
   private:
     void EqualsSuffixOperator(char32_t) noexcept;
     void RepeatedCharOperator(char32_t) noexcept;
     void Punctuation(char32_t) noexcept;
-    void Identifier(char32_t, std::size_t) noexcept;
+    void Identifier(char32_t, std::size_t);
+    bool RadixPrefix() noexcept;
+    void FloatLiteral(token::TokenType&);
+    void NumericSuffix(token::TokenType&);
     void NumericLiteral(char32_t);
 
   private:

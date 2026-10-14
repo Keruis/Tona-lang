@@ -1,12 +1,19 @@
 #ifndef __LITERALSUPPORT__H__
 #define __LITERALSUPPORT__H__
 
-#include <cstdint>
-#include <string_view>
+#include "support/StringExtras.h"
 
 namespace tb {
 
-bool StringToNumeric(std::string_view text, char32_t& cp, std::size_t& length) noexcept;
+template <Radix r>
+const char* ScanNumeric(const char* start, const char* end) noexcept {
+  auto cur = start;
+  while (cur <= end) {
+    if (!IsDigit<r>(*cur))
+      break;
+  }
+  return cur;
+}
   
 }
 
