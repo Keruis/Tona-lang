@@ -2,6 +2,8 @@
 
 #include "utility/Algorithms.h"
 
+namespace tb {
+
 bool DecodeAt(const char* start, const char* end, char32_t& cp, std::size_t& length) noexcept {
   const auto first = static_cast<std::uint8_t>(*start);
   switch (first) {
@@ -36,7 +38,7 @@ bool DecodeAt(const char* start, const char* end, char32_t& cp, std::size_t& len
       const auto second = static_cast<std::uint8_t>(start[1]);
       const auto third = static_cast<std::uint8_t>(start[2]);
       const auto fourth = static_cast<std::uint8_t>(start[3]);
-      if (!utility::IsAllOf(0x80, second & 0xC0, third & 0xC0, fourth & 0xC0) || (first == 0xF0 && second > 0x90) || (first == 0xF4 && second > 0x8F))
+      if (!utility::IsAllOf(0x80, second & 0xC0, third & 0xC0, fourth & 0xC0) || (first == 0xF0 && second < 0x90) || (first == 0xF4 && second > 0x8F))
         return false;
       length = 4;
       cp = ((first & 0x07) << 18) | ((second & 0x3F) << 12) | ((third & 0x3F) << 6) | (fourth & 0x3F);
@@ -45,4 +47,6 @@ bool DecodeAt(const char* start, const char* end, char32_t& cp, std::size_t& len
     default:
       return false;
   }
+}
+
 }

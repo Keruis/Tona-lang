@@ -8,10 +8,8 @@ namespace tb {
 template <Radix r>
 const char* ScanNumeric(const char* start, const char* end) noexcept {
   auto cur = start;
-  while (cur <= end) {
-    if (!IsDigit<r>(*cur))
-      break;
-  }
+  while (cur < end && IsDigit<r>(*cur))
+    cur++;
   return cur;
 }
   

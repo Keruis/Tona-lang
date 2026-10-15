@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-namespace tb::token {
+namespace tb {
 
 constexpr static std::uint8_t repeated_char_operator_offset = 90;
 constexpr static std::uint8_t equals_suffix_operator_offset = 95;

@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 
-namespace tb::err {
+namespace tb {
 
 class LexError : public std::runtime_error {
   public:

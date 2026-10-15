@@ -5,7 +5,7 @@
 
 #include "../lex/UnicodeChar.h"
 
-namespace tb::unicode {
+namespace tb {
 
 constexpr bool IsUnicodeWhitespace(char32_t cp) noexcept {
   return utility::IsAnyOf(cp, U' ', U'\t', U'\v', U'\f');

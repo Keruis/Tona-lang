@@ -11,7 +11,7 @@ namespace tb {
 class Lexer {
   public:
     Lexer(std::span<const char> source)
-      : source(source), cur(source.data()), end(&source.back()) 
+      : source(source), cur(source.data()), end(source.data() + source.size()) 
     {}
 
     void NextToken();
@@ -27,7 +27,7 @@ class Lexer {
     void AdvanceColumn(std::size_t) noexcept;
     void Advance(char32_t, std::size_t) noexcept;
     void UpdatePosition() noexcept;
-    void UpdateToken(token::TokenClass, token::TokenType, std::string_view);
+    void UpdateToken(TokenClass, TokenType, std::string_view);
     char32_t SkipTrivia(std::size_t&);
 
   private:
@@ -36,13 +36,13 @@ class Lexer {
     void Punctuation(char32_t) noexcept;
     void Identifier(char32_t, std::size_t);
     bool RadixPrefix() noexcept;
-    void FloatLiteral(token::TokenType&);
-    void NumericSuffix(token::TokenType&);
+    void FloatLiteral(TokenType&);
+    void NumericSuffix(TokenType&);
     void NumericLiteral(char32_t);
 
   private:
     std::span<const char> source;
-    token::Token tok{};
+    Token tok{};
 
     const char* cur = nullptr;
     const char* end = nullptr;

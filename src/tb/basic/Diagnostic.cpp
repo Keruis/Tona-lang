@@ -1,6 +1,6 @@
 #include "basic/Diagnostic.h"
 
-namespace tb::err {
+namespace tb {
 
 std::string Diagnostic::render() const {
   const std::string number = std::to_string(line);

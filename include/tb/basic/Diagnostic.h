@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <string_view>
 
-namespace tb::err {
+namespace tb {
 
 struct Diagnostic {
   std::string message;
