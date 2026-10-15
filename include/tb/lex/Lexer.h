@@ -39,6 +39,8 @@ class Lexer {
     void FloatLiteral(TokenType&);
     void NumericSuffix(TokenType&);
     void NumericLiteral(char32_t);
+    void StringLiteral();
+    void CharacterLiteral();
 
   private:
     std::span<const char> source;

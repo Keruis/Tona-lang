@@ -14,6 +14,10 @@
 
 #include "support/UnicodeExtras.h"
 
+#include "utility/Algorithms.h"
+
+#include <cstring>
+
 namespace tb {
 
 [[noreturn]] void Lexer::Fail(std::string message) const {
@@ -254,17 +258,12 @@ void Lexer::NumericSuffix(TokenType& type) {
       return;
     }
   }
+
   tok.suffix = 0;
   while (IsDigit<Dec>(*cur))
     tok.suffix = tok.suffix * 10 + (*cur++ - '0');
-  switch (tok.suffix) {
-    default:
-      Fail("");
-    case 8:
-    case 16: 
-    case 32: 
-    case 64:
-  }
+  if (!utility::IsAnyOf(tok.suffix, 8, 16, 32, 64)) 
+    Fail("");
 }
 
 void Lexer::NumericLiteral(char32_t cp) {
@@ -283,6 +282,46 @@ numeric_suf:
     {start, cur - (tok.suffix ? tok.suffix >= 10 ? 3: 2: 0)}
   );
   AdvanceColumn(tok.location.length);
+}
+
+void Lexer::StringLiteral() {
+  AdvanceCursor(1);
+  TokenType type = TokenType::LITERALS_STRING_VIEW;
+  auto& str = tok.str;
+  while (AtEnd()) {
+    switch (*cur) {
+      case '"':
+        
+        UpdateToken(
+          TokenClass::LITERAL,
+          type
+        );
+        return;
+      case '\\':
+        
+      [[unlikely]] case '\0':
+      [[unlikely]] case '\n':
+      [[unlikely]] case '\r':
+        Fail("");
+      [[likely]] default:
+        str.push_back(*cur++);
+    }
+  }
+  Fail("");
+}
+
+void Lexer::CharacterLiteral() {
+  AdvanceCursor(1);
+  switch (*cur) {
+    case '\'':
+      Fail("empty");
+    case '\\':
+      
+    default:
+      AdvanceCursor(1);
+  }
+  if (*cur != '\'')
+    Fail("");
 }
 
 void Lexer::NextToken() {
@@ -306,10 +345,12 @@ void Lexer::NextToken() {
   switch (cp) {
     case U'0' ... U'9':
       return NumericLiteral(cp);
-    
+
     case U'"':
+      return StringLiteral();
 
     case U'\'':
+      return CharacterLiteral();
 
     case U'!': case U'=':
     case U'*': case U'/':
@@ -326,7 +367,7 @@ void Lexer::NextToken() {
     case U',': case U':':
     case U';':
       return Punctuation(cp);
-    
+
     default:
       if (cp == '_' || IsXidStart(cp))
         return Identifier(cp, length);
