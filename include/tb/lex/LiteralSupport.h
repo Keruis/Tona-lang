@@ -13,8 +13,6 @@ const char* ScanNumeric(const char* start, const char* end) noexcept {
   return cur;
 }
 
-bool DecodeEscape(const char* start, const char* end) noexcept;
-
 }
 
 #endif

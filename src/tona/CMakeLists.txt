@@ -1,4 +1,4 @@
-add_library(tona
+add_executable(tona
   main.cpp
 )
 

@@ -15,6 +15,9 @@ class Lexer {
     {}
 
     void NextToken();
+    const Token& RefToken() const noexcept {
+      return tok;
+    } 
 
   private:
     [[noreturn]] void Fail(std::string) const;
@@ -39,6 +42,7 @@ class Lexer {
     void FloatLiteral(TokenType&);
     void NumericSuffix(TokenType&);
     void NumericLiteral(char32_t);
+    void Escape(char32_t) noexcept;
     void StringLiteral();
     void CharacterLiteral();
 

@@ -185,7 +185,7 @@ void Lexer::Identifier(char32_t cp, std::size_t length) {
   do {
     Advance(cp, length);
     cp = Peek(length);
-  } while (cp == U'_' || IsXidContinue(cp));
+  } while (cp == U'_' || IsXidStart(cp) || IsXidContinue(cp));
   UpdateToken(
     TokenClass::IDENTIFIER, 
     TokenType::IDENTIFIER, 
@@ -284,43 +284,74 @@ numeric_suf:
   AdvanceColumn(tok.location.length);
 }
 
+void Lexer::Escape(char32_t cp) noexcept {
+  auto& character = tok.character;
+  switch (cp) {
+    case U'n': character = '\n'; break;
+    case U'r': character = '\r'; break;
+    case U't': character = '\t'; break;
+    case U'v': character = '\v'; break;
+    case U'a': character = '\a'; break;
+    case U'b': character = '\b'; break;
+    default:
+      character = cp;
+  }
+}
+
 void Lexer::StringLiteral() {
-  AdvanceCursor(1);
-  TokenType type = TokenType::LITERALS_STRING_VIEW;
+  auto& character = tok.character;
   auto& str = tok.str;
+  TokenType type = TokenType::LITERALS_STRING_VIEW;
+  char32_t cp;
+  std::size_t length;
+  Advance(U'"', 1);
   while (AtEnd()) {
-    switch (*cur) {
-      case '"':
-        
-        UpdateToken(
-          TokenClass::LITERAL,
-          type
-        );
-        return;
-      case '\\':
-        
-      [[unlikely]] case '\0':
-      [[unlikely]] case '\n':
-      [[unlikely]] case '\r':
-        Fail("");
-      [[likely]] default:
-        str.push_back(*cur++);
+    cp = Peek(length);
+    if (IsUnicodeLineTerminator(cp)) [[unlikely]]
+      Fail("");
+    if (cp == U'"') {
+      Advance(cp, length);
+      UpdateToken(
+        TokenClass::LITERAL,
+        type
+      );
+      if (type == TokenType::LITERALS_STRING_VIEW)
+        tok.text = {start + 1, cur - 1};
+      return;
     }
+    if (cp == U'\\') {
+      if (type == TokenType::LITERALS_STRING_VIEW)
+        str.assign(start + 1, cur - 1);
+      type = TokenType::LITERALS_STRING;
+      Advance(cp, length);
+      cp = Peek(length);
+      Escape(cp);
+      str.push_back(character);
+    }
+    Advance(cp, length);
   }
   Fail("");
 }
 
 void Lexer::CharacterLiteral() {
-  AdvanceCursor(1);
-  switch (*cur) {
-    case '\'':
-      Fail("empty");
-    case '\\':
-      
-    default:
-      AdvanceCursor(1);
-  }
-  if (*cur != '\'')
+  char32_t cp;
+  std::size_t length;
+  Advance(U'\'', 1);
+  cp = Peek(length);
+  if (IsUnicodeLineTerminator(cp))
+    Fail("");
+  if (cp == U'\'')
+    Fail("");
+  if (cp == U'\\') {
+    Advance(cp, length);
+    cp = Peek(length);
+    Escape(cp);
+  } 
+  if (length != 1)
+    Fail("");
+  Advance(cp, length);
+  cp = Peek(length);
+  if (cp != '\'')
     Fail("");
 }
 
