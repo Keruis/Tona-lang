@@ -130,7 +130,7 @@ char32_t Lexer::SkipTrivia(std::size_t& length) {
         Advance(cp, length);
       }
       if (!closed) [[unlikely]] 
-        Fail("unterminated block comment");
+        Fail("Lexer::SkipTrivia");
       UpdatePosition();
       continue;
     }
@@ -186,10 +186,12 @@ void Lexer::Identifier(char32_t cp, std::size_t length) {
     Advance(cp, length);
     cp = Peek(length);
   } while (cp == U'_' || IsXidStart(cp) || IsXidContinue(cp));
+  std::string_view text{start, cur};
+  auto type = FindKeyword(text);
   UpdateToken(
-    TokenClass::IDENTIFIER, 
-    TokenType::IDENTIFIER, 
-    {start, cur}
+    type != TokenType::IDENTIFIER ? TokenClass::KEYWORD : TokenClass::IDENTIFIER, 
+    type, 
+    text
   );
 }
 
@@ -201,10 +203,13 @@ bool Lexer::RadixPrefix() noexcept {
     case 'b': case 'B':
       AdvanceCursor(1);
       cur = ScanNumeric<Bin>(cur, end);
-      break;
+      goto fail;
     case 'x': case 'X':
       AdvanceCursor(1);
       cur = ScanNumeric<Hex>(cur, end);
+fail:
+      if (cur - start <= 2)
+        Fail("Lexer::RadixPrefix");
       break;
     default:
       if (!IsDigit<Oct>(*cur))
@@ -223,14 +228,16 @@ void Lexer::FloatLiteral(TokenType& type) {
     case '.': 
       AdvanceCursor(1);
       cur = ScanNumeric<Dec>(cur, end);
-      if (*cur == 'e' || *cur == 'E') {
+      if (!AtEnd() && (*cur == 'e' || *cur == 'E')) {
     case 'e': case 'E':
         AdvanceCursor(1);
-        cur += (*cur == '+' || *cur == '-');
-        if (!IsDigit<Dec>(*cur)) [[unlikely]]
-          Fail("");
-        AdvanceCursor(1);
-        cur = ScanNumeric<Dec>(cur, end);
+        if (!AtEnd()) {
+          cur += (*cur == '+' || *cur == '-');
+          if (!IsDigit<Dec>(*cur)) [[unlikely]]
+            Fail("");
+          AdvanceCursor(1);
+          cur = ScanNumeric<Dec>(cur, end);
+        }
       }
       type = TokenType::LITERALS_FLOAT;
     default:
@@ -238,6 +245,8 @@ void Lexer::FloatLiteral(TokenType& type) {
 }
 
 void Lexer::NumericSuffix(TokenType& type) {
+  char32_t cp;
+  std::size_t length;
   if (AtEnd())
     return;
 
@@ -245,25 +254,25 @@ void Lexer::NumericSuffix(TokenType& type) {
     case 'u': case 'U':
     case 'i': case 'I':
       if (type == TokenType::LITERALS_FLOAT)
-        Fail("");
+        Fail("Lexer::NumericSuffix_1");
+      AdvanceCursor(1);
+      type = TokenType::LITERALS_INT_SUF;
     case 'f': case 'F':
       AdvanceCursor(1);
-      type = static_cast<TokenType>(static_cast<std::uint8_t>(type) + 1);
+      type = TokenType::LITERALS_FLOAT_SUF;
       break;
-    default: {
-      std::size_t length;
-      char32_t cp = Peek(length);
-      if (cp == U'_' || IsXidStart(cp) || IsXidContinue(cp))
-        Fail("Lexer::NumericLiteral");
-      return;
-    }
+    default: goto fail;
   }
 
   tok.suffix = 0;
-  while (IsDigit<Dec>(*cur))
+  while (!AtEnd() && IsDigit<Dec>(*cur))
     tok.suffix = tok.suffix * 10 + (*cur++ - '0');
   if (!utility::IsAnyOf(tok.suffix, 8, 16, 32, 64)) 
-    Fail("");
+    Fail("Lexer::NumericSuffix_2");
+fail:
+  cp = Peek(length);
+  if (cp == U'_' || IsXidStart(cp) || IsXidContinue(cp))
+    Fail("Lexer::NumericLiteral_3");
 }
 
 void Lexer::NumericLiteral(char32_t cp) {
@@ -305,10 +314,10 @@ void Lexer::StringLiteral() {
   char32_t cp;
   std::size_t length;
   Advance(U'"', 1);
-  while (AtEnd()) {
+  while (!AtEnd()) {
     cp = Peek(length);
     if (IsUnicodeLineTerminator(cp)) [[unlikely]]
-      Fail("");
+      Fail("Lexer::StringLiteral_1");
     if (cp == U'"') {
       Advance(cp, length);
       UpdateToken(
@@ -330,7 +339,7 @@ void Lexer::StringLiteral() {
     }
     Advance(cp, length);
   }
-  Fail("");
+  Fail("Lexer::StringLiteral_2");
 }
 
 void Lexer::CharacterLiteral() {
@@ -339,20 +348,36 @@ void Lexer::CharacterLiteral() {
   Advance(U'\'', 1);
   cp = Peek(length);
   if (IsUnicodeLineTerminator(cp))
-    Fail("");
+    Fail("Lexer::CharacterLiteral_1");
   if (cp == U'\'')
-    Fail("");
+    Fail("Lexer::CharacterLiteral_2");
   if (cp == U'\\') {
     Advance(cp, length);
     cp = Peek(length);
     Escape(cp);
   } 
   if (length != 1)
-    Fail("");
+    Fail("Lexer::CharacterLiteral_3");
   Advance(cp, length);
   cp = Peek(length);
   if (cp != '\'')
-    Fail("");
+    Fail("Lexer::CharacterLiteral_4");
+  UpdateToken(
+    TokenClass::LITERAL, 
+    TokenType::LITERALS_CHARACTER
+  );
+}
+
+TokenType Lexer::FindKeyword(std::string_view text) noexcept {
+  if (text == "if")
+    return TokenType::KEYWORD_IF;
+  if (text == "else")
+    return TokenType::KEYWORD_ELSE;
+  if (text == "true")
+    return TokenType::KEYWORD_TRUE;
+  if (text == "false")
+    return TokenType::KEYWORD_FALSE;
+  return TokenType::IDENTIFIER;
 }
 
 void Lexer::NextToken() {

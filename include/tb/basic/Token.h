@@ -11,7 +11,6 @@ namespace tb {
 
 constexpr static std::uint8_t repeated_char_operator_offset = 90;
 constexpr static std::uint8_t equals_suffix_operator_offset = 95;
-constexpr static std::uint8_t literal_suffix_offset = 1;
 
 enum class TokenType : std::uint8_t {
   IDENTIFIER = 0,
@@ -66,9 +65,9 @@ enum class TokenType : std::uint8_t {
   KEYWORD_FALSE = 164,
 
   LITERALS_INT = 220,
-  LITERALS_INT_SUF = LITERALS_INT + literal_suffix_offset,
+  LITERALS_INT_SUF = 221,
   LITERALS_FLOAT = 222,
-  LITERALS_FLOAT_SUF = LITERALS_FLOAT + literal_suffix_offset,
+  LITERALS_FLOAT_SUF = 223,
   
   LITERALS_STRING = 224,
   LITERALS_STRING_VIEW = 225,

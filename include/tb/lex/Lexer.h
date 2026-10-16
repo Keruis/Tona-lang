@@ -45,6 +45,7 @@ class Lexer {
     void Escape(char32_t) noexcept;
     void StringLiteral();
     void CharacterLiteral();
+    TokenType FindKeyword(std::string_view) noexcept;
 
   private:
     std::span<const char> source;
